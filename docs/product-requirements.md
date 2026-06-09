@@ -32,27 +32,26 @@ The engine must calculate:
 
 ## Target Users
 
-MVP 1 is intended for personal finance users who:
-
-- Use BNPL services such as Klarna or PayPal Pay in 4.
-- Pay installments using one or more credit cards.
-- Want a forward-looking view of credit card cash obligations.
-- Need to understand upcoming monthly cash pressure before card bills are due.
+MVP 1 is intended for personal finance users who need to understand upcoming credit-card payment obligations before payment due dates occur.
 
 ## Required Capabilities
 
 The rules engine must support user-provided credit card information:
 
+- Credit card identifier.
 - Card name.
 - Statement end day.
 - Payment due day.
 
 The rules engine must support user-provided BNPL plan information:
 
+- BNPL plan identifier.
 - Provider name.
 - Plan name.
 - Purchase amount.
-- Start date.
+- Currency.
+- Purchase date.
+- First installment date.
 - Installment count.
 - Installment frequency.
 - Linked credit card.
@@ -63,9 +62,21 @@ The rules engine must produce:
 - Installment amount.
 - Statement cycle.
 - Credit card due date.
-- Aggregated obligations by due date.
+- Aggregated obligations by payment due date.
 - Aggregated obligations by credit card.
-- Aggregated obligations by month.
+- Derived cash-flow reporting by:
+  - `cash_flow_year`
+  - `cash_flow_month`
+  - `cash_flow_period`
+
+The rules engine must produce reporting output based on the `InstallmentProjection` view model containing:
+
+- Installment date.
+- Installment amount.
+- Credit card.
+- Statement cycle.
+- Payment due date.
+- Cash-flow period.
 
 ## Example Scenario
 
@@ -80,7 +91,9 @@ BNPL plan:
 - Provider: Klarna.
 - Plan name: Laptop Sleeve.
 - Purchase amount: 120.00.
-- Start date: 2026-06-07.
+- Currency: CAD.
+- Purchase date: 2026-06-07.
+- First installment date: 2026-06-07.
 - Installments: 4.
 - Frequency: every 14 days.
 
@@ -89,7 +102,8 @@ Expected behavior:
 - Generate four installments beginning on 2026-06-07.
 - Assign each installment to the correct Tangerine Mastercard statement cycle.
 - Assign each installment to the correct Tangerine Mastercard payment due date.
-- Produce a cash-flow view grouped by due date.
+- Produce a cash-flow view grouped by payment due date.
+- Validate approved scenarios documented in `docs/test-cases.md`.
 
 ## Out Of Scope
 
@@ -114,3 +128,5 @@ MVP 1 must not include:
 ## Expected Value
 
 MVP 1 is successful when the rules engine can reliably explain the difference between BNPL installment timing and actual credit card cash impact timing. It should become the calculation foundation for later product versions.
+
+The engine is considered validated when the approved scenarios documented in `docs/test-cases.md` pass successfully.

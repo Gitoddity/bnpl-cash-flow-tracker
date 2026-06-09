@@ -271,3 +271,45 @@ Related Prompts:
 - Prompt 004 - MVP 1 Test Cases
 - Prompt 005 - Test Cases Final Refinement
 - Prompt 007 - User Flows Workflow Entry Point Update
+
+## Prompt 009 - Product Requirements Alignment
+
+Date: 2026-06-09
+
+Purpose:
+
+Align product requirements with approved MVP 1 specifications.
+
+Prompt:
+
+Full prompt saved in `prompts/009-product-requirements-alignment.md`.
+
+Key Outcomes:
+
+- Updated product requirements terminology to match the approved data model.
+- Added currency, stable identifier, and `InstallmentProjection` reporting references.
+- Added validation traceability to `docs/test-cases.md`.
+
+Decisions:
+
+- Product requirements reference `docs/test-cases.md` as the authoritative validation source for approved scenarios.
+- Reporting requirements are expressed in terms of `InstallmentProjection`.
+- No business rules changed.
+
+Related Documentation:
+
+- `docs/product-requirements.md`
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- `docs/test-cases.md`
+- `docs/user-flows.md`
+- `docs/success-criteria.md`
+
+Related Prompts:
+
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
+- Prompt 004 - MVP 1 Test Cases
+- Prompt 005 - Test Cases Final Refinement
+- Prompt 007 - User Flows Workflow Entry Point Update
+- Prompt 008 - Success Criteria Alignment
