@@ -313,3 +313,46 @@ Related Prompts:
 - Prompt 005 - Test Cases Final Refinement
 - Prompt 007 - User Flows Workflow Entry Point Update
 - Prompt 008 - Success Criteria Alignment
+
+## Prompt 010 - MVP Scope Alignment
+
+Date: 2026-06-09
+
+Purpose:
+
+Align MVP scope with approved MVP 1 specifications.
+
+Prompt:
+
+Full prompt saved in `prompts/010-mvp-scope-alignment.md`.
+
+Key Outcomes:
+
+- Updated MVP scope terminology to match the approved data model.
+- Added reporting and aggregation references aligned with approved calculation rules.
+- Added validation traceability to `docs/test-cases.md`.
+
+Decisions:
+
+- MVP scope references `docs/test-cases.md` as the authoritative validation source for approved scenarios.
+- Reporting requirements are expressed in terms of `InstallmentProjection`.
+- No business rules changed.
+
+Related Documentation:
+
+- `docs/product-requirements.md`
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- `docs/test-cases.md`
+- `docs/user-flows.md`
+- `docs/success-criteria.md`
+
+Related Prompts:
+
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
+- Prompt 004 - MVP 1 Test Cases
+- Prompt 005 - Test Cases Final Refinement
+- Prompt 007 - User Flows Workflow Entry Point Update
+- Prompt 008 - Success Criteria Alignment
+- Prompt 009 - Product Requirements Alignment

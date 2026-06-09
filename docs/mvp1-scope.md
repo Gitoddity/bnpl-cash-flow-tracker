@@ -24,12 +24,16 @@ Business logic:
 Supported inputs:
 
 - Credit card name.
+- Credit card identifier.
 - Credit card statement end day.
 - Credit card payment due day.
+- BNPL plan identifier.
 - BNPL provider name.
 - BNPL plan name.
 - Purchase amount.
-- Start date.
+- Currency.
+- Purchase date.
+- First installment date.
 - Installment count.
 - Installment frequency.
 - Linked credit card.
@@ -40,8 +44,13 @@ Expected outputs:
 - Installment amount.
 - Statement cycle.
 - Credit card due date.
-- Aggregated future obligations.
-- Human-readable command-line report.
+- Aggregated future obligations by payment due date.
+- Aggregated future obligations by credit card.
+- Derived cash-flow reporting by:
+  - `cash_flow_year`
+  - `cash_flow_month`
+  - `cash_flow_period`
+- Human-readable reporting output based on `InstallmentProjection`.
 
 Quality requirements:
 
@@ -80,6 +89,8 @@ MVP 1 is complete when:
 
 - The rules engine can be executed locally.
 - Automated tests pass.
-- The documented example scenarios are validated.
+- The approved scenarios documented in `docs/test-cases.md` are validated successfully.
 - The output is human-readable.
 - The implementation follows the documented data model and calculation rules.
+
+`docs/test-cases.md` is the authoritative validation source for MVP 1 business-rule verification.
