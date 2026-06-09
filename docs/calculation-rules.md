@@ -15,35 +15,48 @@ BNPL Plan -> Installments -> Statement Cycles -> Due Dates -> Aggregated Cash Fl
 Inputs:
 
 - Purchase amount.
-- Start date.
+- First installment date.
 - Installment count.
 - Installment frequency.
 
 Rules:
 
-- Installment 1 occurs on the start date.
+- Installment 1 occurs on `first_installment_date`.
 - Each subsequent installment occurs one frequency interval after the previous installment.
 - For Pay in 4 plans using a 14-day interval, installment dates are:
-  - Start date.
-  - Start date plus 14 days.
-  - Start date plus 28 days.
-  - Start date plus 42 days.
-- Equal installment amounts are calculated as purchase amount divided by installment count.
-- Implementation must use decimal-safe money handling.
+  - First installment date.
+  - First installment date plus 14 days.
+  - First installment date plus 28 days.
+  - First installment date plus 42 days.
+- MVP 1 supports `BIWEEKLY`, meaning every 14 days.
+- Installment amounts are calculated by dividing purchase amount across installments, rounding to 2 decimal places, and assigning any remainder to the final installment.
+- Implementation must use decimal-safe money handling. Binary floating point must not be used.
 
 Example:
 
 ```text
 Purchase Amount: 120.00
-Start Date: 2026-06-07
+First Installment Date: 2026-06-07
 Installments: 4
-Frequency: every 14 days
+Frequency: BIWEEKLY
 
 Installments:
 1. 2026-06-07 - 30.00
 2. 2026-06-21 - 30.00
 3. 2026-07-05 - 30.00
 4. 2026-07-19 - 30.00
+```
+
+### Rounding Example
+
+```text
+Purchase Amount: 100.00
+Installments: 3
+
+Installments:
+1. 33.33
+2. 33.33
+3. 33.34
 ```
 
 ## Statement Cycle Mapping
@@ -55,7 +68,7 @@ Inputs:
 
 Rules:
 
-- A statement cycle includes charges after the previous statement end date through the current statement end date.
+- A statement cycle includes charges where `previous_cycle_end_date < charge_date <= cycle_end_date`.
 - An installment dated on the statement end day belongs to that closing statement.
 - An installment dated after the statement end day belongs to the next statement cycle.
 
@@ -82,9 +95,8 @@ Inputs:
 
 Rules:
 
-- The payment due date is the configured due day following the statement close date.
-- If the due day is earlier in the month than the statement end day, the due date falls in the following month.
-- If the due day is later than the statement end day, the due date may fall in the same month.
+- The payment due date is the first occurrence of `payment_due_day` after the statement cycle close date.
+- The due date rule must be calculated from actual dates, not only by comparing due day and statement end day.
 
 Example for statement end day 17 and due day 13:
 
@@ -108,13 +120,14 @@ The engine must aggregate obligations by:
 
 - Due date.
 - Credit card.
-- Calendar month of the due date.
+- Cash-flow year-month.
 
 Aggregation rules:
 
 - Multiple installments assigned to the same card and due date should be summed.
 - Multiple BNPL plans may contribute to the same due date.
-- Monthly aggregation uses the month of the payment due date, not the month of the installment date.
+- Cash-flow period aggregation uses the year-month of the payment due date, not the month of the installment date.
+- `cash_flow_period` uses `YYYY-MM` format, such as `2026-07`.
 
 ## Example: Tangerine Mastercard And Klarna
 
@@ -132,9 +145,10 @@ BNPL plan:
 Provider: Klarna
 Plan Name: Laptop Sleeve
 Purchase Amount: 120.00
-Start Date: 2026-06-07
+Purchase Date: 2026-06-07
+First Installment Date: 2026-06-07
 Installments: 4
-Frequency: every 14 days
+Frequency: BIWEEKLY
 ```
 
 Generated installments:
@@ -157,7 +171,7 @@ Expected mapping:
 
 Aggregated cash flow:
 
-| Due Date | Credit Card | Month | Total |
+| Due Date | Credit Card | Cash Flow Period | Total |
 | --- | --- | --- | ---: |
 | 2026-07-13 | Tangerine Mastercard | 2026-07 | 30.00 |
 | 2026-08-13 | Tangerine Mastercard | 2026-08 | 60.00 |

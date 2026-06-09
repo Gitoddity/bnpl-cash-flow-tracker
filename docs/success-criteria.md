@@ -4,7 +4,7 @@
 
 Given:
 
-- Start date.
+- First installment date.
 - Installment frequency.
 - Installment count.
 - Purchase amount.
@@ -12,7 +12,7 @@ Given:
 The engine must:
 
 - Generate the correct number of installments.
-- Use the start date as the first installment date.
+- Use `first_installment_date` as the first installment date.
 - Apply the frequency consistently to future installments.
 - Calculate installment amounts accurately using decimal-safe money handling.
 

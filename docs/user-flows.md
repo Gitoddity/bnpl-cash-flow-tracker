@@ -40,7 +40,8 @@ Inputs:
 - Provider name.
 - Plan name.
 - Purchase amount.
-- Start date.
+- Purchase date.
+- First installment date.
 - Installment count.
 - Installment frequency.
 - Linked credit card.
@@ -56,9 +57,10 @@ Example:
 Provider: Klarna
 Plan Name: Laptop Sleeve
 Purchase Amount: 120.00
-Start Date: 2026-06-07
+Purchase Date: 2026-06-07
+First Installment Date: 2026-06-07
 Installments: 4
-Frequency: every 14 days
+Frequency: BIWEEKLY
 Linked Credit Card: Tangerine Mastercard
 ```
 

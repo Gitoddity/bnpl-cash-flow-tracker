@@ -56,3 +56,44 @@ Related Documentation:
 - `docs/architecture.md`
 - `docs/success-criteria.md`
 - `docs/project-instructions.md`
+
+## Prompt 002 - Data Model Review
+
+Date: 2026-06-09
+
+Purpose:
+
+Improve the conceptual data model before Python implementation, focusing on stable identifiers, explicit money/date/frequency fields, calculation clarity, and future dataclass implementation.
+
+Prompt:
+
+Full prompt saved in `prompts/002-data-model-review.md`.
+
+Key Outcomes:
+
+- Added stable internal IDs for credit cards and BNPL plans.
+- Updated installments to reference `plan_id` and `credit_card_id`.
+- Added explicit currency handling with MVP 1 default `CAD`.
+- Replaced active `start_date` terminology with `purchase_date` and `first_installment_date`.
+- Defined explicit installment frequency values, with `BIWEEKLY` supported in MVP 1.
+- Clarified statement cycle inclusion and credit card due date rules.
+- Expanded cash-flow obligation period fields.
+- Added explicit installment rounding behavior.
+- Added a non-persistent `InstallmentProjection` model for reporting.
+- Added Python implementation notes for dataclasses, `Decimal`, dates, enums/constants, and pure functions.
+
+Decisions:
+
+- `first_installment_date` replaces `start_date` in current active docs and examples.
+- Historical prompt files are not retroactively edited.
+- IDs are stable internal application identifiers, not database primary keys.
+- The due date is calculated as the first occurrence of `payment_due_day` after the statement cycle close date.
+- Cash-flow aggregation uses due date, credit card, and cash-flow year-month.
+
+Related Documentation:
+
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- `docs/user-flows.md`
+- `docs/success-criteria.md`
+- `docs/project-instructions.md`

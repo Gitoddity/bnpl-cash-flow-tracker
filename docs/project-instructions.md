@@ -34,7 +34,7 @@ Due Date:
 BNPL Plan:
 
 - A purchase financed through a Buy Now Pay Later provider.
-- Defined by provider, plan name, purchase amount, start date, installment count, frequency, and linked credit card.
+- Defined by provider, plan name, purchase amount, currency, purchase date, first installment date, installment count, frequency, and linked credit card.
 
 Installment:
 
