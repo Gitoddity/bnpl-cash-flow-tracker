@@ -127,3 +127,37 @@ Related Documentation:
 
 - `docs/calculation-rules.md`
 - `docs/data-model.md`
+
+## Prompt 004 - MVP 1 Test Cases
+
+Date: 2026-06-09
+
+Purpose:
+
+Define MVP 1 business-rule test cases before implementation, using the approved data model and calculation rules as the source of truth.
+
+Prompt:
+
+Full prompt saved in `prompts/004-test-cases.md`.
+
+Key Outcomes:
+
+- Created `docs/test-cases.md` with 11 business-rule test cases.
+- Covered standard Klarna Pay in 4, statement boundary dates, due-date month behavior, uneven installment rounding, multiple plans, multiple cards, year rollover, and leap-year handling.
+- Added explicit leap-year installment dates including `2028-02-29`.
+- Documented expected installment schedules, statement cycles, due dates, cash-flow periods, and aggregated obligations.
+
+Decisions:
+
+- Test cases follow the approved data model and calculation rules.
+- Cash-flow obligations in test cases aggregate by credit card and payment due date.
+- TC-011 validates leap-day handling through installment generation, statement mapping, due-date mapping, cash-flow period derivation, and aggregation.
+- No implementation code, Python files, `src/` files, or `tests/` files were created.
+
+Related Documentation:
+
+- `docs/test-cases.md`
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
