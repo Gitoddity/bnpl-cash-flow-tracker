@@ -61,6 +61,7 @@ When generating code:
 
 - Follow documented calculation rules.
 - Follow documented data model.
+- Implementations must satisfy the approved scenarios documented in `docs/test-cases.md`.
 - Prefer small incremental changes.
 - Create tests for new business logic.
 - Do not modify unrelated files.
@@ -101,13 +102,21 @@ The prompt registry is the source of truth for project decision history.
 For future development:
 
 1. `docs/project-instructions.md` defines long-term project rules.
-2. `docs/calculation-rules.md` defines business calculation behavior.
-3. `docs/data-model.md` defines core domain concepts.
-4. `prompts/prompt-registry.md` records decision history.
-5. Implementation must conform to the documents above.
+2. `docs/product-requirements.md` defines the product vision and requirements.
+3. `docs/mvp1-scope.md` defines the approved MVP 1 boundary.
+4. `docs/calculation-rules.md` defines business calculation behavior.
+5. `docs/data-model.md` defines core domain concepts.
+6. `docs/test-cases.md` defines authoritative validation scenarios.
+7. `docs/architecture.md` defines implementation architecture boundaries.
+8. `prompts/prompt-registry.md` records decision history.
+9. Implementation must conform to the documents above.
 
 ## Current MVP Boundary
 
 Before implementation begins, the documentation and prompt registry must be reviewed and approved.
 
-No Python implementation should be created until approval is given.
+No Python implementation should be created until:
+
+- Documentation is approved.
+- Architecture is approved.
+- Implementation plan is approved.
