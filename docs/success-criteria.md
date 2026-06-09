@@ -1,0 +1,101 @@
+# Success Criteria
+
+## 1. Generate Installments Correctly
+
+Given:
+
+- Start date.
+- Installment frequency.
+- Installment count.
+- Purchase amount.
+
+The engine must:
+
+- Generate the correct number of installments.
+- Use the start date as the first installment date.
+- Apply the frequency consistently to future installments.
+- Calculate installment amounts accurately using decimal-safe money handling.
+
+## 2. Assign Statement Cycles Correctly
+
+Each installment must be assigned to the correct credit card statement cycle.
+
+Tests must cover:
+
+- Installment before statement end day.
+- Installment on statement end day.
+- Installment after statement end day.
+- Month transitions.
+- Year transitions.
+
+## 3. Assign Due Dates Correctly
+
+Each installment must be assigned to the correct credit card payment due date through its statement cycle.
+
+Tests must cover:
+
+- Due date in the same month as statement close.
+- Due date in the month after statement close.
+- Different card configurations.
+
+## 4. Aggregate Cash Flow Correctly
+
+The engine must aggregate future obligations by:
+
+- Due date.
+- Credit card.
+- Month.
+
+Tests must cover:
+
+- Multiple installments on the same due date.
+- Multiple BNPL plans on the same credit card.
+- Multiple credit cards.
+- Calendar month grouping by due date.
+
+## 5. Pass Automated Tests
+
+Automated tests must cover:
+
+- Installment generation.
+- Statement cycle mapping.
+- Due date mapping.
+- Cash-flow aggregation.
+- End-to-end example scenarios.
+
+The future implementation should be considered incomplete until automated tests pass locally.
+
+## 6. Validate Real-World Examples
+
+The engine must successfully model:
+
+- Tangerine Mastercard.
+- RBC Mastercard.
+- Klarna Pay in 4.
+- PayPal Pay in 4.
+
+At minimum, the Tangerine Mastercard and Klarna Laptop Sleeve example must match the documented expected output in `docs/calculation-rules.md`.
+
+## 7. Produce Human-Readable Output
+
+The engine must generate a local command-line report showing:
+
+- Installment date.
+- Installment amount.
+- Statement cycle.
+- Due date.
+- Aggregated future obligations.
+
+The output should be understandable without reading the source code.
+
+## 8. Respect MVP Boundaries
+
+The engine must not include:
+
+- UI.
+- Database.
+- API.
+- Cloud deployment.
+- Authentication.
+- Bank integrations.
+- AI features.
