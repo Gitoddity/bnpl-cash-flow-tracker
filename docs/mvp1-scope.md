@@ -17,9 +17,12 @@ Business logic:
 - Generate BNPL installment schedules.
 - Assign installments to credit card statement cycles.
 - Assign statement cycles to credit card payment due dates.
-- Aggregate future obligations by due date.
+- Aggregate future obligations by payment due date.
 - Aggregate future obligations by credit card.
-- Aggregate future obligations by month.
+- Derive cash-flow reporting fields:
+  - `cash_flow_year`
+  - `cash_flow_month`
+  - `cash_flow_period`
 
 Supported inputs:
 
