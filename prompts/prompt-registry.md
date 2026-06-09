@@ -158,6 +158,40 @@ Related Documentation:
 
 - `docs/test-cases.md`
 
+## Prompt 005 - Test Cases Final Refinement
+
+Date: 2026-06-09
+
+Purpose:
+
+Finalize test-case documentation consistency before implementation by aligning TC-009 with approved RBC Mastercard settings and strengthening TC-007 rounding reconciliation checks.
+
+Prompt:
+
+Full prompt saved in `prompts/005-test-cases-final-refinement.md`.
+
+Key Outcomes:
+
+- Updated TC-009 to use RBC Mastercard Statement End Day `6` and Payment Due Day `27`.
+- Recalculated TC-009 RBC statement cycle, due date, cash-flow period, and aggregated obligation.
+- Added explicit TC-007 validation that installment totals and aggregated cash-flow totals reconcile exactly to the original purchase amount.
+
+Decisions:
+
+- TC-009 uses the project-approved RBC Mastercard settings.
+- TC-007 explicitly protects against rounding-loss defects.
+- No business rules changed; this was a test-spec refinement only.
+
+Related Documentation:
+
+- `docs/test-cases.md`
+
+Related Prompts:
+
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
+- Prompt 004 - MVP 1 Test Cases
+
 ## Prompt 007 - User Flows Workflow Entry Point Update
 
 Date: 2026-06-09
@@ -196,41 +230,44 @@ Related Prompts:
 - Prompt 003 - Calculation Rules Aggregation Clarification
 - Prompt 004 - MVP 1 Test Cases
 - Prompt 005 - Test Cases Final Refinement
-- `docs/data-model.md`
-- `docs/calculation-rules.md`
-- Prompt 002 - Data Model Review
-- Prompt 003 - Calculation Rules Aggregation Clarification
 
-## Prompt 005 - Test Cases Final Refinement
+## Prompt 008 - Success Criteria Alignment
 
 Date: 2026-06-09
 
 Purpose:
 
-Finalize test-case documentation consistency before implementation by aligning TC-009 with approved RBC Mastercard settings and strengthening TC-007 rounding reconciliation checks.
+Align success criteria with approved MVP 1 specifications.
 
 Prompt:
 
-Full prompt saved in `prompts/005-test-cases-final-refinement.md`.
+Full prompt saved in `prompts/008-success-criteria-alignment.md`.
 
 Key Outcomes:
 
-- Updated TC-009 to use RBC Mastercard Statement End Day `6` and Payment Due Day `27`.
-- Recalculated TC-009 RBC statement cycle, due date, cash-flow period, and aggregated obligation.
-- Added explicit TC-007 validation that installment totals and aggregated cash-flow totals reconcile exactly to the original purchase amount.
+- Updated success criteria to use approved aggregation terminology.
+- Added traceability to `docs/test-cases.md`.
+- Aligned reporting language with `InstallmentProjection`.
+- Strengthened real-world validation traceability.
 
 Decisions:
 
-- TC-009 uses the project-approved RBC Mastercard settings.
-- TC-007 explicitly protects against rounding-loss defects.
-- No business rules changed; this was a test-spec refinement only.
+- Success criteria reference `docs/test-cases.md` as the authoritative validation source for real-world example verification.
+- Reporting criteria are expressed in terms of `InstallmentProjection`.
+- No business rules changed.
 
 Related Documentation:
 
+- `docs/success-criteria.md`
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
 - `docs/test-cases.md`
+- `docs/user-flows.md`
 
 Related Prompts:
 
 - Prompt 002 - Data Model Review
 - Prompt 003 - Calculation Rules Aggregation Clarification
 - Prompt 004 - MVP 1 Test Cases
+- Prompt 005 - Test Cases Final Refinement
+- Prompt 007 - User Flows Workflow Entry Point Update

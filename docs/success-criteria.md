@@ -42,9 +42,16 @@ Tests must cover:
 
 The engine must aggregate future obligations by:
 
-- Due date.
 - Credit card.
-- Month.
+- Payment due date.
+
+The engine must derive:
+
+- `cash_flow_year`
+- `cash_flow_month`
+- `cash_flow_period`
+
+from the payment due date.
 
 Tests must cover:
 
@@ -63,7 +70,12 @@ Automated tests must cover:
 - Cash-flow aggregation.
 - End-to-end example scenarios.
 
-The future implementation should be considered incomplete until automated tests pass locally.
+Automated tests should implement and validate the approved scenarios documented in `docs/test-cases.md`.
+
+The implementation is not considered complete until:
+
+- Automated tests pass locally.
+- Approved test-case scenarios pass successfully.
 
 ## 6. Validate Real-World Examples
 
@@ -76,14 +88,20 @@ The engine must successfully model:
 
 At minimum, the Tangerine Mastercard and Klarna Laptop Sleeve example must match the documented expected output in `docs/calculation-rules.md`.
 
+The engine must successfully model the approved scenarios documented in `docs/test-cases.md`.
+
+The documented test cases represent the authoritative expected outputs for validation of installment generation, statement-cycle mapping, due-date mapping, and cash-flow aggregation.
+
 ## 7. Produce Human-Readable Output
 
-The engine must generate a local command-line report showing:
+The engine must generate a human-readable report based on the `InstallmentProjection` view model.
 
 - Installment date.
 - Installment amount.
+- Credit card.
 - Statement cycle.
-- Due date.
+- Payment due date.
+- Cash-flow period.
 - Aggregated future obligations.
 
 The output should be understandable without reading the source code.
