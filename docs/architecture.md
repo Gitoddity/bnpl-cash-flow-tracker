@@ -46,7 +46,9 @@ Recommended responsibilities:
 - Statement cycle model.
 - Due date model.
 - Cash flow obligation model.
-- InstallmentProjection is not a source-of-truth domain entity.
+- InstallmentProjection model, as a non-persistent reporting projection.
+
+InstallmentProjection is part of the domain contract, but it is not a source-of-truth entity and should not contain business rules.
 
 Implementation guidance:
 
@@ -93,8 +95,6 @@ Recommended responsibilities:
 - Render aggregated cash-flow summaries.
 - Build `InstallmentProjection` objects from calculation results.
 
-`InstallmentProjection` belongs to the Reporting Layer.
-
 Implementation guidance:
 
 - Keep formatting separate from calculations.
@@ -132,7 +132,8 @@ Allowed future implementation concepts:
 - `datetime.date` for dates.
 - `decimal.Decimal` for money.
 - `dataclasses` for simple domain objects.
-- Reporting models may reside in `reporting/`.
+- Reporting formatting may reside in `reporting/`.
+- Non-persistent projection models such as `InstallmentProjection` may reside with domain models.
 - `pytest` for automated tests.
 
 Avoid:
