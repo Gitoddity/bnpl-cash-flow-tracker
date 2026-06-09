@@ -44,7 +44,9 @@ Recommended responsibilities:
 - BNPL plan model.
 - Installment model.
 - Statement cycle model.
+- Due date model.
 - Cash flow obligation model.
+- InstallmentProjection is not a source-of-truth domain entity.
 
 Implementation guidance:
 
@@ -64,7 +66,11 @@ Recommended responsibilities:
 - Generate installment schedules.
 - Map installment dates to statement cycles.
 - Map statement cycles to payment due dates.
-- Aggregate obligations by due date, credit card, and month.
+- Aggregate obligations by payment due date and credit card.
+- Derive cash-flow reporting fields:
+  - `cash_flow_year`
+  - `cash_flow_month`
+  - `cash_flow_period`
 
 Implementation guidance:
 
@@ -85,6 +91,9 @@ Recommended responsibilities:
 - Render statement cycle assignments.
 - Render due-date assignments.
 - Render aggregated cash-flow summaries.
+- Build `InstallmentProjection` objects from calculation results.
+
+`InstallmentProjection` belongs to the Reporting Layer.
 
 Implementation guidance:
 
@@ -105,6 +114,8 @@ Recommended responsibilities:
 - Unit tests for aggregation.
 - Scenario tests for real-world examples.
 
+`docs/test-cases.md` is the authoritative source for business-rule validation scenarios.
+
 Recommended fixtures:
 
 - Tangerine Mastercard.
@@ -121,6 +132,7 @@ Allowed future implementation concepts:
 - `datetime.date` for dates.
 - `decimal.Decimal` for money.
 - `dataclasses` for simple domain objects.
+- Reporting models may reside in `reporting/`.
 - `pytest` for automated tests.
 
 Avoid:

@@ -356,3 +356,49 @@ Related Prompts:
 - Prompt 007 - User Flows Workflow Entry Point Update
 - Prompt 008 - Success Criteria Alignment
 - Prompt 009 - Product Requirements Alignment
+
+## Prompt 012 - Architecture Alignment
+
+Date: 2026-06-09
+
+Purpose:
+
+Align architecture with approved MVP 1 specifications.
+
+Prompt:
+
+Full prompt saved in `prompts/012-architecture-alignment.md`.
+
+Key Outcomes:
+
+- Updated architecture terminology to match the approved data model.
+- Clarified reporting ownership for `InstallmentProjection`.
+- Added validation traceability to `docs/test-cases.md`.
+
+Decisions:
+
+- `InstallmentProjection` belongs to the Reporting Layer.
+- `docs/test-cases.md` is the authoritative source for business-rule validation scenarios.
+- No business rules changed.
+
+Related Documentation:
+
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- `docs/test-cases.md`
+- `docs/user-flows.md`
+- `docs/success-criteria.md`
+- `docs/product-requirements.md`
+- `docs/mvp1-scope.md`
+
+Related Prompts:
+
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
+- Prompt 004 - MVP 1 Test Cases
+- Prompt 005 - Test Cases Final Refinement
+- Prompt 007 - User Flows Workflow Entry Point Update
+- Prompt 008 - Success Criteria Alignment
+- Prompt 009 - Product Requirements Alignment
+- Prompt 010 - MVP Scope Alignment
+- Prompt 011 - MVP Scope Final Alignment
