@@ -4,6 +4,42 @@
 
 MVP 1 has no UI, database, API, or cloud deployment. User flows describe how a local command-line or script-driven rules engine should behave after implementation.
 
+## Flow 0: Start Calculation Run
+
+User goal:
+
+- Run the BNPL Cash Flow Tracker calculation engine using one or more configured credit cards and BNPL plans.
+
+Inputs:
+
+- One or more credit cards.
+- One or more BNPL plans.
+
+Expected result:
+
+- Inputs are validated.
+- Installment schedules are generated.
+- Installments are mapped to statement cycles.
+- Statement cycles are mapped to payment due dates.
+- Cash-flow obligations are aggregated.
+- Installment projections are generated for reporting.
+
+Example output:
+
+```text
+Calculation Run Started
+
+Credit Cards Loaded: 2
+BNPL Plans Loaded: 3
+
+Generated:
+- Installment Schedules
+- Statement Cycle Mapping
+- Due Date Mapping
+- Cash Flow Obligations
+- Installment Projections
+```
+
 ## Flow 1: Define Credit Cards
 
 User goal:
@@ -12,6 +48,7 @@ User goal:
 
 Inputs:
 
+- Card ID.
 - Card name.
 - Statement end day.
 - Payment due day.
@@ -24,7 +61,8 @@ Expected result:
 Example:
 
 ```text
-Tangerine Mastercard
+Card ID: card_tangerine_mastercard
+Card Name: Tangerine Mastercard
 Statement End Day: 17
 Payment Due Day: 13
 ```
@@ -37,31 +75,35 @@ User goal:
 
 Inputs:
 
+- Plan ID.
 - Provider name.
 - Plan name.
 - Purchase amount.
+- Currency.
 - Purchase date.
 - First installment date.
 - Installment count.
 - Installment frequency.
-- Linked credit card.
+- Linked credit card ID.
 
 Expected result:
 
 - The engine generates the full installment schedule.
-- Each installment is linked to the selected card.
+- Each installment is linked to the selected card via `credit_card_id`.
 
 Example:
 
 ```text
+Plan ID: plan_klarna_laptop_sleeve
 Provider: Klarna
 Plan Name: Laptop Sleeve
 Purchase Amount: 120.00
+Currency: CAD
 Purchase Date: 2026-06-07
 First Installment Date: 2026-06-07
 Installments: 4
 Frequency: BIWEEKLY
-Linked Credit Card: Tangerine Mastercard
+Linked Credit Card ID: card_tangerine_mastercard
 ```
 
 ## Flow 3: Generate Installment Schedule
@@ -101,15 +143,15 @@ User goal:
 Expected output:
 
 ```text
-2026-06-07 installment -> 2026-07-13 card payment due date
-2026-06-21 installment -> 2026-08-13 card payment due date
+2026-06-07 installment -> 2026-07-13 payment due date
+2026-06-21 installment -> 2026-08-13 payment due date
 ```
 
 ## Flow 6: Review Aggregated Cash Flow
 
 User goal:
 
-- See total future obligations grouped by due date, card, and month.
+- See total future obligations grouped by payment due date, credit card, and cash-flow period.
 
 Expected output:
 
@@ -119,7 +161,26 @@ Expected output:
 2026-09-13 | Tangerine Mastercard | 2026-09 | 30.00
 ```
 
-## Flow 7: Validate Real-World Examples
+## Flow 7: Review Installment Projection
+
+User goal:
+
+- See the complete calculated output for each installment.
+
+Expected output:
+
+```text
+Installment Date
+Installment Amount
+Credit Card
+Statement Cycle
+Payment Due Date
+Cash Flow Period
+```
+
+This flow represents the `InstallmentProjection` view model defined in the data model and is intended for reporting and future UI display.
+
+## Flow 8: Validate Real-World Examples
 
 User goal:
 

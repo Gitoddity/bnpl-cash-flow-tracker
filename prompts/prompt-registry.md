@@ -157,6 +157,45 @@ Decisions:
 Related Documentation:
 
 - `docs/test-cases.md`
+
+## Prompt 007 - User Flows Workflow Entry Point Update
+
+Date: 2026-06-09
+
+Purpose:
+
+Improve end-to-end workflow clarity by adding a calculation-run entry point before credit card and BNPL plan definition flows.
+
+Prompt:
+
+Full prompt saved in `prompts/007-user-flows-alignment.md`.
+
+Key Outcomes:
+
+- Added a `Flow 0` calculation-run entry point to `docs/user-flows.md`.
+- Updated user-flow terminology to reflect stable IDs, explicit currency, and `cash_flow_period`.
+- Documented the `InstallmentProjection` reporting flow.
+- Renumbered the real-world validation flow to remain the final flow.
+
+Decisions:
+
+- The user-flow specification starts with the calculation run entry point before configuration flows.
+- `InstallmentProjection` is part of the documented reporting flow, not a business-rule change.
+- No approved business rules changed.
+
+Related Documentation:
+
+- `docs/user-flows.md`
+- `docs/data-model.md`
+- `docs/calculation-rules.md`
+- `docs/test-cases.md`
+
+Related Prompts:
+
+- Prompt 002 - Data Model Review
+- Prompt 003 - Calculation Rules Aggregation Clarification
+- Prompt 004 - MVP 1 Test Cases
+- Prompt 005 - Test Cases Final Refinement
 - `docs/data-model.md`
 - `docs/calculation-rules.md`
 - Prompt 002 - Data Model Review
