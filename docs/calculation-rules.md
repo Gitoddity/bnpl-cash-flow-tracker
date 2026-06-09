@@ -118,15 +118,15 @@ Payment Due Date: 2026-06-25
 
 The engine must aggregate obligations by:
 
-- Due date.
 - Credit card.
-- Cash-flow year-month.
+- Payment due date.
 
 Aggregation rules:
 
 - Multiple installments assigned to the same card and due date should be summed.
 - Multiple BNPL plans may contribute to the same due date.
-- Cash-flow period aggregation uses the year-month of the payment due date, not the month of the installment date.
+- `cash_flow_year`, `cash_flow_month`, and `cash_flow_period` are derived from the payment due date.
+- `cash_flow_period` uses the year-month of the payment due date.
 - `cash_flow_period` uses `YYYY-MM` format, such as `2026-07`.
 
 ## Example: Tangerine Mastercard And Klarna
@@ -185,5 +185,6 @@ Aggregated cash flow:
 - Due date in the same calendar month as statement close.
 - Due date in the following calendar month.
 - Month-end and year-end transitions.
+- Purchase amount that does not divide evenly across installments.
 - Multiple BNPL plans assigned to the same card.
 - Multiple cards with different statement and due days.

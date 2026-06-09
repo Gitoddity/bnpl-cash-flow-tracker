@@ -97,3 +97,33 @@ Related Documentation:
 - `docs/user-flows.md`
 - `docs/success-criteria.md`
 - `docs/project-instructions.md`
+
+## Prompt 003 - Calculation Rules Aggregation Clarification
+
+Date: 2026-06-09
+
+Purpose:
+
+Clarify cash-flow aggregation keys and add explicit testing coverage for purchase amounts that do not divide evenly across installments.
+
+Prompt:
+
+Full prompt saved in `prompts/003-calculation-rules-aggregation-clarification.md`.
+
+Key Outcomes:
+
+- Simplified cash-flow aggregation keys to credit card and payment due date.
+- Documented that `cash_flow_year`, `cash_flow_month`, and `cash_flow_period` are derived from payment due date.
+- Added uneven purchase amount division to calculation edge cases.
+- Linked the clarification to the Prompt 002 data model revision completed on 2026-06-09.
+
+Decisions:
+
+- Cash-flow year, month, and period are not independent aggregation keys because payment due date already determines them.
+- `cash_flow_period` remains a derived `YYYY-MM` reporting field based on payment due date.
+- No calculation behavior changed beyond clarifying aggregation terminology and edge-case coverage.
+
+Related Documentation:
+
+- `docs/calculation-rules.md`
+- `docs/data-model.md`
