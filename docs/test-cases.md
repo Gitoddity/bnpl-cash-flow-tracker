@@ -389,6 +389,17 @@ Expected Cash Flow Obligations:
 2026-08-13 | Tangerine Mastercard | 2026-08 | 66.67 CAD
 ```
 
+Validation:
+
+The sum of all generated installments must equal the original purchase amount exactly.
+
+The sum of all aggregated cash-flow obligations must equal the original purchase amount exactly.
+
+```text
+33.33 + 33.33 + 33.34 = 100.00
+33.33 + 66.67 = 100.00
+```
+
 ## TC-008 Multiple BNPL Plans Same Card Same Due Date
 
 Purpose:
@@ -469,8 +480,8 @@ Payment Due Day: 13
 
 Credit Card ID: card_rbc_mastercard
 Credit Card Name: RBC Mastercard
-Statement End Day: 10
-Payment Due Day: 25
+Statement End Day: 6
+Payment Due Day: 27
 
 BNPL Plan ID: plan_tangerine_shared_date
 Provider: Klarna
@@ -506,21 +517,21 @@ Expected Statement Cycle Mapping:
 
 ```text
 Tangerine Mastercard: 2026-06-12 -> 2026-05-18 to 2026-06-17
-RBC Mastercard: 2026-06-12 -> 2026-06-11 to 2026-07-10
+RBC Mastercard: 2026-06-12 -> 2026-06-07 to 2026-07-06
 ```
 
 Expected Due Date Mapping:
 
 ```text
 Tangerine Mastercard: 2026-06-12 -> 2026-07-13 -> cash_flow_period 2026-07
-RBC Mastercard: 2026-06-12 -> 2026-07-25 -> cash_flow_period 2026-07
+RBC Mastercard: 2026-06-12 -> 2026-07-27 -> cash_flow_period 2026-07
 ```
 
 Expected Cash Flow Obligations:
 
 ```text
 2026-07-13 | Tangerine Mastercard | 2026-07 | 40.00 CAD
-2026-07-25 | RBC Mastercard | 2026-07 | 60.00 CAD
+2026-07-27 | RBC Mastercard | 2026-07 | 60.00 CAD
 ```
 
 ## TC-010 December To January Year Rollover
