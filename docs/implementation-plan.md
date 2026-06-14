@@ -35,6 +35,15 @@ Implementation intent by layer:
 
 ## Build Phases
 
+### Phase 0 – Repository Setup
+
+- Create package structure
+- Create __init__.py files
+- Configure pytest
+- Create fixture folders
+- Verify imports work
+- Verify test runner works
+
 ### Phase 1 - Domain Models
 Implement the core domain objects exactly as described in `docs/data-model.md`:
 - `CreditCard`
