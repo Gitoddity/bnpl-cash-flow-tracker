@@ -132,6 +132,35 @@ Validate every approved scenario in `docs/test-cases.md` against:
 
 Validation is complete only when the approved scenarios produce the documented expected outputs.
 
+### Phase 10 - Demo Runner
+
+Implement a local demo runner that executes the approved TC-001 Tangerine Mastercard / Klarna Laptop Sleeve scenario end to end.
+
+The demo runner should:
+- create the sample CreditCard
+- create the sample BNPLPlan
+- generate installments
+- map statement cycles
+- map due dates
+- aggregate cash-flow obligations
+- build InstallmentProjection objects
+- render human-readable output
+
+The demo runner is for local validation and demonstration only.
+
+It must not:
+- add user input
+- add file input/output
+- add database persistence
+- add API endpoints
+- add UI
+- add cloud features
+- change business rules
+
+It should be runnable from the command line, for example:
+
+python -m bnpl_cashflow.demo
+
 ## Testing Strategy
 
 ### Unit Testing Approach
