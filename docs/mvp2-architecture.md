@@ -191,7 +191,7 @@ These are deferred, not part of MVP 2.
 - `tests/integration/` validates the complete end-to-end workflow:
 
   `JSON Input -> Validation -> Application Service -> Rules Engine -> Reporting`
-
+- tests/unit/ validates isolated helper functions and non-business-rule utilities introduced by MVP 2.
 - Existing MVP 1 rule tests remain the source of truth for business-calculation correctness.
 - MVP 2 tests must not duplicate calculation-rule verification already covered by MVP 1 tests.
 - MVP 2 tests should focus on input handling, orchestration, integration boundaries, and error handling.
