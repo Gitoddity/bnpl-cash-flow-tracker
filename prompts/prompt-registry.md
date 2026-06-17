@@ -402,3 +402,38 @@ Related Prompts:
 - Prompt 009 - Product Requirements Alignment
 - Prompt 010 - MVP Scope Alignment
 - Prompt 011 - MVP Scope Final Alignment
+
+## Prompt 013 - MVP 2 Phase 6 Final Verification
+
+Date: 2026-06-17
+
+Purpose:
+
+Finalize MVP 2 documentation alignment and verify the completed MVP 2 workflow without changing product scope or calculation behavior.
+
+Prompt:
+
+Full prompt saved in `prompts/013-mvp2-phase6-final-verification.md`.
+
+Key Outcomes:
+
+- Confirmed that the implemented MVP 2 workflow matches the documented local JSON-driven architecture.
+- Confirmed that no scope change was required in the MVP 2 docs during the final verification pass.
+- Recorded the final verification phase in the project prompt registry.
+
+Decisions:
+
+- No documentation updates were required beyond the prompt-registry record for final verification.
+- MVP 2 remains local, JSON-driven, and CLI-based.
+- MVP 1 calculation rules remain untouched.
+
+Related Documentation:
+
+- `docs/mvp2-scope.md`
+- `docs/json-contract.md`
+- `docs/mvp2-architecture.md`
+- `docs/mvp2-implementation-plan.md`
+
+Related Prompts:
+
+- Prompt 013 - MVP 2 Phase 6 Final Verification
