@@ -97,6 +97,13 @@ Non-responsibilities:
 - No payload parsing.
 - No schema enforcement.
 
+Clarification:
+
+- The application layer determines overall workflow success or failure.
+- The application layer decides whether execution may proceed to the rules engine.
+- The reporting layer is responsible only for formatting and rendering validation or runtime errors.
+- The reporting layer must not make validation decisions or business-rule decisions.
+
 ### CLI Layer
 
 Purpose:
@@ -177,3 +184,14 @@ Future growth can attach to the architecture without changing MVP 1 rules:
 
 These are deferred, not part of MVP 2.
 
+## Testing Strategy Alignment
+
+- `tests/input/` validates JSON contract enforcement, parsing, normalization, and validation behavior.
+- `tests/application/` validates orchestration behavior and application-service workflows.
+- `tests/integration/` validates the complete end-to-end workflow:
+
+  `JSON Input -> Validation -> Application Service -> Rules Engine -> Reporting`
+
+- Existing MVP 1 rule tests remain the source of truth for business-calculation correctness.
+- MVP 2 tests must not duplicate calculation-rule verification already covered by MVP 1 tests.
+- MVP 2 tests should focus on input handling, orchestration, integration boundaries, and error handling.
