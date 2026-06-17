@@ -31,7 +31,7 @@ They need:
 MVP 2 includes:
 
 - JSON input for credit cards and BNPL plans.
-- Input validation and normalization.
+- Input validation and normalization of JSON data only. No calculation corrections or business-rule adjustments occur during normalization.
 - Application-layer orchestration across one or more cards and one or more plans.
 - Reuse of the existing MVP 1 rules engine for all calculations.
 - Human-readable reporting of installment schedules, projections, and cash-flow obligations.
@@ -43,6 +43,7 @@ MVP 2 includes:
 MVP 2 must not include:
 
 - New business rules.
+- Modification of MVP 1 domain rules
 - Duplicate calculation logic.
 - REST APIs.
 - Streamlit or any other UI framework.
@@ -81,6 +82,7 @@ This is the smallest useful path because it:
 ## Non-Goals
 
 - Building a public product surface.
+- Supporting multiple input formats (CSV, Excel, YAML, etc.).
 - Adding persistence or user accounts.
 - Accepting free-form natural language input.
 - Changing any rules for installment generation, statement-cycle mapping, due-date mapping, or cash-flow aggregation.
