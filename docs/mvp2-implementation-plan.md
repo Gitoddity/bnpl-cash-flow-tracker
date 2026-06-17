@@ -63,7 +63,19 @@ Exit criteria:
 - The service produces the same outputs as the current engine for the approved scenarios.
 - No new calculation logic appears in the application layer.
 
-### Phase 3: CLI Wrapper
+### Phase 3: Reporting Integration
+
+Deliverables:
+
+- Reuse existing renderers for schedule and cash-flow output.
+- Ensure output is deterministic and stable.
+- Keep rendering logic presentation-only.
+
+Exit criteria:
+
+- Report output is understandable without reading source code.
+
+### Phase 4: CLI Wrapper
 
 Deliverables:
 
@@ -76,18 +88,6 @@ Exit criteria:
 
 - A user can run the workflow locally with JSON input and see readable results.
 
-### Phase 4: Reporting Integration
-
-Deliverables:
-
-- Reuse existing renderers for schedule and cash-flow output.
-- Ensure output is deterministic and stable.
-- Keep rendering logic presentation-only.
-
-Exit criteria:
-
-- Report output is understandable without reading source code.
-
 ### Phase 5: Testing Expansion
 
 Deliverables:
@@ -96,6 +96,9 @@ Deliverables:
 - Add application-layer orchestration tests.
 - Add integration tests for full JSON-to-report flows.
 - Preserve all existing MVP 1 tests unchanged.
+- Tests should be added alongside implementation whenever practical.
+- Phase 5 represents the final test expansion, integration verification, and regression pass.
+- Testing is not intended to occur only after all implementation is complete.
 
 Exit criteria:
 
@@ -172,6 +175,10 @@ Focus:
 - End-to-end JSON file or stdin input.
 - Output text stability.
 - Preservation of MVP 1 behaviors.
+- MVP 2 integration tests may use existing MVP 1 scenarios such as uneven rounding, year rollover, and leap-year cases.
+- These tests verify preservation of approved MVP 1 behavior through the full workflow.
+- MVP 2 integration tests do not become the source of truth for calculation correctness.
+- Existing MVP 1 rule tests remain the authoritative verification of calculation logic.
 
 Coverage examples:
 
@@ -234,4 +241,3 @@ Formatting code can accidentally absorb business logic.
 Mitigation:
 
 - Keep reporting read-only and presentation-focused.
-
