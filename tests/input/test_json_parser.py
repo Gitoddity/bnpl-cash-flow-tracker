@@ -88,6 +88,7 @@ def test_valid_single_card_single_plan_payload():
     assert len(parsed.credit_cards) == 1
     assert len(parsed.bnpl_plans) == 1
     assert parsed.credit_cards[0].id == "card_tangerine_mastercard"
+    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
     assert parsed.bnpl_plans[0].currency == "CAD"
     assert parsed.bnpl_plans[0].purchase_amount == Decimal("120.00")
     assert parsed.bnpl_plans[0].purchase_date == date(2026, 6, 7)
@@ -220,6 +221,51 @@ def test_negative_or_zero_amount_rejected():
     assert any(issue.path == "bnpl_plans[0].purchase_amount" for issue in exc_info.value.issues)
 
 
+def test_existing_balance_defaults_to_zero_when_omitted():
+    parsed = validate_payload(_single_plan_payload())
+
+    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
+
+
+def test_valid_positive_existing_balance():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["existing_balance"] = "500.00"
+
+    parsed = validate_payload(payload)
+
+    assert parsed.credit_cards[0].existing_balance == Decimal("500.00")
+
+
+def test_valid_zero_existing_balance():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["existing_balance"] = "0.00"
+
+    parsed = validate_payload(payload)
+
+    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
+
+
+@pytest.mark.parametrize("value", ["abc", "12.3.4"])
+def test_invalid_existing_balance_decimal_rejected(value):
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["existing_balance"] = value
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "credit_cards[0].existing_balance" for issue in exc_info.value.issues)
+
+
+def test_negative_existing_balance_rejected():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["existing_balance"] = "-1.00"
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "credit_cards[0].existing_balance" for issue in exc_info.value.issues)
+
+
 def test_unsupported_currency_rejected():
     payload = _single_plan_payload()
     payload["bnpl_plans"][0]["currency"] = "EUR"
@@ -319,4 +365,3 @@ def test_no_rules_engine_functions_invoked_during_validation(monkeypatch):
     parsed = validate_payload(_single_plan_payload())
 
     assert parsed.credit_cards[0].id == "card_tangerine_mastercard"
-

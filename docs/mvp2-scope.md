@@ -31,6 +31,8 @@ They need:
 MVP 2 includes:
 
 - JSON input for credit cards and BNPL plans.
+- An existing credit card balance per card, defaulting to `0.00` when omitted.
+- Showing BNPL impact alongside the existing card balance in report output.
 - Input validation and normalization of JSON data only. No calculation corrections or business-rule adjustments occur during normalization.
 - Application-layer orchestration across one or more cards and one or more plans.
 - Reuse of the existing MVP 1 rules engine for all calculations.
@@ -55,6 +57,12 @@ MVP 2 must not include:
 - Notifications.
 - Budgeting features.
 - AI features.
+- Payment tracking.
+- Interest calculation.
+- Statement balance reconciliation.
+- Minimum payment calculation.
+- Credit-limit utilization.
+- Transaction history import.
 
 ## Recommendation
 
@@ -95,4 +103,3 @@ MVP 2 is successful when a user can:
 2. Run the local workflow.
 3. Receive validated outputs produced by the existing MVP 1 engine.
 4. See the same approved behaviors already covered by MVP 1 test cases.
-

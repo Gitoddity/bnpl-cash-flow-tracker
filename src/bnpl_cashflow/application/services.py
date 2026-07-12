@@ -80,6 +80,7 @@ def _build_credit_card(card_input: CreditCardInput) -> CreditCard:
         name=card_input.name,
         statement_end_day=card_input.statement_end_day,
         payment_due_day=card_input.payment_due_day,
+        existing_balance=card_input.existing_balance,
     )
 
 

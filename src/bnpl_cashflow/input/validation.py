@@ -42,6 +42,7 @@ class CreditCardInput:
     name: str
     statement_end_day: int
     payment_due_day: int
+    existing_balance: Decimal = Decimal("0.00")
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,8 +133,15 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
         name = _require_string_field(item, "name", path, issues)
         statement_end_day = _require_day_of_month(item, "statement_end_day", path, issues)
         payment_due_day = _require_day_of_month(item, "payment_due_day", path, issues)
+        existing_balance = _require_non_negative_decimal_field(item, "existing_balance", path, issues)
 
-        if card_id is None or name is None or statement_end_day is None or payment_due_day is None:
+        if (
+            card_id is None
+            or name is None
+            or statement_end_day is None
+            or payment_due_day is None
+            or existing_balance is None
+        ):
             continue
 
         if card_id in seen_ids:
@@ -153,6 +161,7 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
                 name=name,
                 statement_end_day=statement_end_day,
                 payment_due_day=payment_due_day,
+                existing_balance=existing_balance,
             )
         )
 
@@ -354,6 +363,38 @@ def _require_decimal_field(
     return decimal_value
 
 
+def _require_non_negative_decimal_field(
+    item: Mapping[str, Any],
+    field_name: str,
+    path: str,
+    issues: list[ValidationIssue],
+) -> Decimal | None:
+    if field_name not in item:
+        return Decimal("0.00")
+
+    value = item[field_name]
+    if not isinstance(value, str):
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be a string", value=value))
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must not be empty", value=value))
+        return None
+
+    try:
+        decimal_value = Decimal(normalized)
+    except (InvalidOperation, ValueError):
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be a valid decimal value", value=value))
+        return None
+
+    if decimal_value < 0:
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be zero or greater", value=value))
+        return None
+
+    return decimal_value
+
+
 def _require_currency_field(
     item: Mapping[str, Any],
     field_name: str,
@@ -403,4 +444,3 @@ def _require_installment_frequency_field(
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="unsupported installment frequency", value=value))
         return None
     return frequency
-

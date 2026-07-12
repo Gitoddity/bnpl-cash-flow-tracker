@@ -61,7 +61,8 @@ If omitted, the application should use sensible defaults and render the standard
   "id": "card_tangerine_mastercard",
   "name": "Tangerine Mastercard",
   "statement_end_day": 17,
-  "payment_due_day": 13
+  "payment_due_day": 13,
+  "existing_balance": "500.00"
 }
 ```
 
@@ -71,12 +72,17 @@ If omitted, the application should use sensible defaults and render the standard
 - `name`: string, required, human-readable card name.
 - `statement_end_day`: integer, required, 1 to 31.
 - `payment_due_day`: integer, required, 1 to 31.
+- `existing_balance`: string, optional, decimal money value, defaults to `0.00` when omitted.
 
 ### Rules
 
 - `id` must be unique across all cards.
 - `statement_end_day` and `payment_due_day` must be positive integers.
 - The application layer must pass the values to the existing `CreditCard` domain model.
+- `existing_balance` must parse as `Decimal`.
+- `existing_balance` must be zero or positive.
+- Negative balances and credit balances are not supported in MVP 2.
+- `existing_balance` must use the same currency as the BNPL plans in the payload.
 
 ## BNPL Plan Object
 
@@ -146,7 +152,8 @@ Normalization must not:
       "id": "card_tangerine_mastercard",
       "name": "Tangerine Mastercard",
       "statement_end_day": 17,
-      "payment_due_day": 13
+      "payment_due_day": 13,
+      "existing_balance": "500.00"
     }
   ],
   "bnpl_plans": [
@@ -175,13 +182,15 @@ Normalization must not:
       "id": "card_tangerine_mastercard",
       "name": "Tangerine Mastercard",
       "statement_end_day": 17,
-      "payment_due_day": 13
+      "payment_due_day": 13,
+      "existing_balance": "500.00"
     },
     {
       "id": "card_rbc_mastercard",
       "name": "RBC Mastercard",
       "statement_end_day": 6,
-      "payment_due_day": 27
+      "payment_due_day": 27,
+      "existing_balance": "250.00"
     }
   ],
   "bnpl_plans": [
@@ -233,6 +242,7 @@ The input layer must reject payloads that violate the contract.
 - Invalid day-of-month values.
 - Unsupported currency values.
 - Mixed-currency payloads.
+- Negative existing balances.
 
 ### Currency validation
 
@@ -246,6 +256,15 @@ The input layer must reject payloads that violate the contract.
 Each BNPL plan must reference a real card by `credit_card_id`.
 
 The application must fail fast if a referenced card does not exist.
+
+### Existing Balance Validation
+
+- `existing_balance` is optional.
+- If omitted, `existing_balance` defaults to `0.00`.
+- If provided, `existing_balance` must be a valid decimal string.
+- If provided, `existing_balance` must be greater than or equal to `0.00`.
+- `existing_balance` must use the same currency as the BNPL plans in the payload.
+- Overpayments and credit balances are not supported in MVP 2.
 
 ## Parsing Rules
 
@@ -305,6 +324,7 @@ The following are examples of validation failures the input/application layer sh
 - Invalid day-of-month value: `credit_cards[0].statement_end_day = 0` is outside the valid range.
 - Non-decimal purchase amount: `bnpl_plans[0].purchase_amount = "abc"` is not a valid decimal value.
 - Negative purchase amount: `bnpl_plans[0].purchase_amount = "-10.00"` must be rejected.
+- Negative existing balance: `credit_cards[0].existing_balance = "-1.00"` must be rejected.
 
 ### Rules Engine Exception Boundary
 

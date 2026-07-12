@@ -19,6 +19,7 @@ def _validated_single_payload() -> ValidatedPayload:
                 name="Tangerine Mastercard",
                 statement_end_day=17,
                 payment_due_day=13,
+                existing_balance=Decimal("500.00"),
             ),
         ),
         bnpl_plans=(
@@ -94,6 +95,7 @@ def test_valid_single_card_single_plan_orchestration():
     assert len(result.credit_cards) == 1
     assert len(result.bnpl_plans) == 1
     assert len(result.plan_results) == 1
+    assert result.credit_cards[0].existing_balance == Decimal("500.00")
     assert result.plan_results[0].credit_card.id == "card_tangerine_mastercard"
     assert result.plan_results[0].plan.id == "plan_klarna_laptop_sleeve"
     assert [item.installment_date for item in result.installments] == [
@@ -164,6 +166,30 @@ def test_preserves_mvp1_calculation_behavior_through_service():
         date(2026, 8, 13),
         date(2026, 9, 13),
     ]
+
+
+def test_existing_balance_does_not_change_engine_calculations():
+    baseline = run_application(
+        ValidatedPayload(
+            credit_cards=(
+                CreditCardInput(
+                    id="card_tangerine_mastercard",
+                    name="Tangerine Mastercard",
+                    statement_end_day=17,
+                    payment_due_day=13,
+                ),
+            ),
+            bnpl_plans=_validated_single_payload().bnpl_plans,
+            output_options={},
+        )
+    )
+    with_balance = run_application(_validated_single_payload())
+
+    assert baseline.installments == with_balance.installments
+    assert baseline.statement_cycles == with_balance.statement_cycles
+    assert baseline.due_dates == with_balance.due_dates
+    assert baseline.cash_flow_obligations == with_balance.cash_flow_obligations
+    assert baseline.projections == with_balance.projections
 
 
 def test_deterministic_output_ordering():

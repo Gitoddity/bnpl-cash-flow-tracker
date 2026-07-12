@@ -18,6 +18,7 @@ def _single_payload() -> ValidatedPayload:
                 name="Tangerine Mastercard",
                 statement_end_day=17,
                 payment_due_day=13,
+                existing_balance=Decimal("500.00"),
             ),
         ),
         bnpl_plans=(
@@ -90,6 +91,9 @@ def test_rendering_single_card_single_plan_application_result():
     rendered = render_application_report(result)
 
     assert rendered.startswith("BNPL Cash Flow Report")
+    assert "Card Balances" in rendered
+    assert "Tangerine Mastercard | Existing Balance | 500.00 CAD" in rendered
+    assert "Projected Balance Impact | 620.00 CAD" in rendered
     assert "Installment Schedule" in rendered
     assert "Installment Projections" in rendered
     assert "Cash Flow Obligations" in rendered
@@ -102,6 +106,7 @@ def test_rendering_multiple_cards_multiple_plans_is_deterministic():
     second = render_application_report(run_application(_multi_payload()))
 
     assert first == second
+    assert "Card Balances" in first
     assert "plan_tangerine_shared_date" not in first
     assert "Installment Schedule" in first
     assert "Installment Projections" in first
@@ -128,6 +133,7 @@ def test_output_options_affect_presentation_only():
 
     rendered = render_application_report(hidden)
 
+    assert "Card Balances" in rendered
     assert "Installment Schedule" not in rendered
     assert "Installment Projections" in rendered
     assert "Cash Flow Obligations" not in rendered
@@ -189,4 +195,3 @@ def test_reporting_preserves_existing_mvp1_report_behavior():
     assert "2026-07-13 | card_tangerine_mastercard | 2026-07 | 30.00 CAD" in rendered
     assert "2026-08-13 | card_tangerine_mastercard | 2026-08 | 60.00 CAD" in rendered
     assert "4. 2026-07-19 - 30.00 CAD" in rendered
-

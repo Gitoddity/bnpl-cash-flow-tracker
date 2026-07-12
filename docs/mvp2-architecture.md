@@ -52,6 +52,7 @@ Responsibilities:
 - Parse money into `Decimal`.
 - Validate enumerations such as installment frequency.
 - Validate that plan references point to existing cards.
+- Validate and normalize `existing_balance` as a non-negative decimal string that defaults to `0.00` when omitted.
 
 Non-responsibilities:
 
@@ -71,6 +72,7 @@ Responsibilities:
 - Call existing rules functions in the correct order.
 - Handle multiple plans and multiple cards.
 - Join outputs into a report-ready structure.
+- Carry existing card balances into report-ready results.
 
 Non-responsibilities:
 
@@ -90,6 +92,7 @@ Responsibilities:
 - Display installment projections.
 - Display cash-flow obligations.
 - Present validation and error messages in a readable way.
+- Display existing balances and projected balance impact when provided by the application layer.
 
 Non-responsibilities:
 
@@ -103,6 +106,7 @@ Clarification:
 - The application layer decides whether execution may proceed to the rules engine.
 - The reporting layer is responsible only for formatting and rendering validation or runtime errors.
 - The reporting layer must not make validation decisions or business-rule decisions.
+- No interest, payment, or credit-limit rules are introduced in MVP 2.
 
 ### CLI Layer
 

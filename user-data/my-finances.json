@@ -1,0 +1,44 @@
+{
+  "credit_cards": [
+    {
+      "id": "card_rbc_visa",
+      "name": "RBC Visa",
+      "statement_end_day": 6,
+      "payment_due_day": 27,
+      "existing_balance": "0.00"
+    },
+    {
+      "id": "card_td",
+      "name": "TD",
+      "statement_end_day": 16,
+      "payment_due_day": 7,
+      "existing_balance": "125.60"
+    }
+  ],
+  "bnpl_plans": [
+    {
+      "id": "paypal_radar",
+      "provider_name": "PayPal",
+      "plan_name": "Radar",
+      "purchase_amount": "210.00",
+      "currency": "CAD",
+      "purchase_date": "2026-06-09",
+      "first_installment_date": "2026-06-09",
+      "installment_count": 4,
+      "installment_frequency": "BIWEEKLY",
+      "credit_card_id": "card_rbc_visa"
+    },
+    {
+      "id": "paypal_epic_game",
+      "provider_name": "PayPal",
+      "plan_name": "Epic Game",
+      "purchase_amount": "45.19",
+      "currency": "CAD",
+      "purchase_date": "2026-06-09",
+      "first_installment_date": "2026-06-09",
+      "installment_count": 4,
+      "installment_frequency": "BIWEEKLY",
+      "credit_card_id": "card_td"
+    }
+  ]
+}

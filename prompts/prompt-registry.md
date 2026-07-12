@@ -437,3 +437,38 @@ Related Documentation:
 Related Prompts:
 
 - Prompt 013 - MVP 2 Phase 6 Final Verification
+
+## Prompt 014 - Existing Credit Card Balance Scope Change Review
+
+Date: 2026-06-17
+
+Purpose:
+
+Capture the MVP 2 scope-change review that introduces an optional existing credit card balance input to the planning documents without changing code.
+
+Prompt:
+
+Full prompt saved in `prompts/014-existing-credit-card-balance-scope-change.md`.
+
+Key Outcomes:
+
+- Updated the MVP 2 planning documents to describe `existing_balance` as an optional card-level input.
+- Documented that omitted balances default to `0.00` and negative balances are rejected.
+- Preserved the MVP 2 boundary around payments, interest, reconciliation, minimum payments, and credit-limit logic.
+
+Decisions:
+
+- `existing_balance` is optional in MVP 2 planning docs and defaults to `0.00` when omitted.
+- Negative balances and credit balances are not supported in MVP 2.
+- No code changes were made during this documentation pass.
+
+Related Documentation:
+
+- `docs/json-contract.md`
+- `docs/mvp2-scope.md`
+- `docs/mvp2-architecture.md`
+- `docs/mvp2-implementation-plan.md`
+
+Related Prompts:
+
+- Prompt 014 - Existing Credit Card Balance Scope Change Review

@@ -27,6 +27,14 @@ def _require_decimal(value: Decimal, field_name: str) -> Decimal:
     return value
 
 
+def _require_non_negative_decimal(value: Decimal, field_name: str) -> Decimal:
+    if not isinstance(value, Decimal):
+        raise TypeError(f"{field_name} must be a decimal.Decimal instance")
+    if value < Decimal("0"):
+        raise ValueError(f"{field_name} must be zero or greater")
+    return value
+
+
 def _require_positive_int(value: int, field_name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise TypeError(f"{field_name} must be an integer")
@@ -54,12 +62,14 @@ class CreditCard:
     name: str
     statement_end_day: int
     payment_due_day: int
+    existing_balance: Decimal = Decimal("0.00")
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
         object.__setattr__(self, "name", _require_non_empty_text(self.name, "name"))
         object.__setattr__(self, "statement_end_day", _require_day_of_month(self.statement_end_day, "statement_end_day"))
         object.__setattr__(self, "payment_due_day", _require_day_of_month(self.payment_due_day, "payment_due_day"))
+        object.__setattr__(self, "existing_balance", _require_non_negative_decimal(self.existing_balance, "existing_balance"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,4 +196,3 @@ class InstallmentProjection:
         object.__setattr__(self, "statement_cycle_end_date", _require_date(self.statement_cycle_end_date, "statement_cycle_end_date"))
         object.__setattr__(self, "cash_flow_due_date", _require_date(self.cash_flow_due_date, "cash_flow_due_date"))
         object.__setattr__(self, "cash_flow_period", _require_non_empty_text(self.cash_flow_period, "cash_flow_period"))
-

@@ -6,6 +6,18 @@ MVP 2 will add a local JSON-driven application layer around the approved MVP 1 r
 
 The implementation objective is not to change the financial rules. The objective is to make the rules engine usable with real user-provided data while keeping the calculation core untouched.
 
+## Scope Change Note: Existing Credit Card Balance
+
+This planning set now includes an optional `existing_balance` field on each credit card.
+
+Implementation will need to:
+
+- Update input validation.
+- Update the application result model.
+- Update reporting output.
+- Add tests for existing balance behavior.
+- Preserve all current MVP 2 behavior when `existing_balance` is omitted.
+
 ## Plan Principles
 
 - Reuse the existing rules engine for all calculations.

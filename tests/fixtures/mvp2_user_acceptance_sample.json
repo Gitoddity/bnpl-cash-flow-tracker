@@ -1,0 +1,24 @@
+{
+  "credit_cards": [
+    {
+      "id": "card_tangerine_mastercard",
+      "name": "Tangerine Mastercard",
+      "statement_end_day": 17,
+      "payment_due_day": 13
+    }
+  ],
+  "bnpl_plans": [
+    {
+      "id": "plan_klarna_bike_helmet",
+      "provider_name": "Klarna",
+      "plan_name": "Bike Helmet",
+      "purchase_amount": "120.00",
+      "currency": "CAD",
+      "purchase_date": "2026-06-17",
+      "first_installment_date": "2026-06-17",
+      "installment_count": 4,
+      "installment_frequency": "BIWEEKLY",
+      "credit_card_id": "card_tangerine_mastercard"
+    }
+  ]
+}
