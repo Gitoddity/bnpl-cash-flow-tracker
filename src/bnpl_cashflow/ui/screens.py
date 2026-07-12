@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from bnpl_cashflow.ui.state import PLACEHOLDER_STEP, set_current_step
+
 
 def render_welcome_screen() -> None:
     st.title("BNPL Cash Flow Tracker")
@@ -26,4 +28,14 @@ def render_welcome_screen() -> None:
     st.info("This app keeps information only for the active local session. It is not saved.")
 
     if st.button("Get started"):
-        st.info("The guided workflow will be implemented in the next phase.")
+        set_current_step(PLACEHOLDER_STEP)
+        st.rerun()
+
+
+def render_placeholder_step() -> None:
+    st.title("BNPL Cash Flow Tracker")
+    st.write("This is a placeholder step for the guided workflow.")
+
+    if st.button("Back"):
+        set_current_step(0)
+        st.rerun()
