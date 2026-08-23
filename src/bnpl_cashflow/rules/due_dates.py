@@ -18,6 +18,7 @@ def map_due_date(credit_card: CreditCard, statement_cycle: StatementCycle) -> Du
         credit_card_id=credit_card.id,
         statement_cycle_end_date=statement_cycle.cycle_end_date,
         payment_due_date=payment_due_date,
+        statement_cycle_start_date=statement_cycle.cycle_start_date,
     )
 
 
@@ -39,4 +40,3 @@ def _add_months(year: int, month: int, delta: int) -> tuple[int, int]:
     month_index = (year * 12) + (month - 1) + delta
     new_year, new_month_index = divmod(month_index, 12)
     return new_year, new_month_index + 1
-

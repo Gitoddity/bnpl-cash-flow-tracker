@@ -17,6 +17,8 @@ def render_application_report(result: ApplicationResult) -> str:
         raise TypeError("result must be an ApplicationResult instance")
 
     sections = ["BNPL Cash Flow Report"]
+    if result.as_of_date is not None:
+        sections.append(f"As of {result.as_of_date.isoformat()}")
     sections.extend(_build_report_sections(result))
     return "\n\n".join(sections)
 
@@ -40,9 +42,9 @@ def _render_card_balance_summary(result: ApplicationResult) -> str:
 
     for card in result.credit_cards:
         scheduled_obligations = obligations_by_card.get(card.id, Decimal("0.00"))
-        projected_balance = card.existing_balance + scheduled_obligations
+        projected_balance = card.current_balance + scheduled_obligations
         lines.append(
-            f"{card.name} | Existing Balance | {card.existing_balance:.2f} {default_currency} | "
+            f"{card.name} | Current Balance | {card.current_balance:.2f} {default_currency} | "
             f"BNPL Obligations | {scheduled_obligations:.2f} {default_currency} | "
             f"Projected Balance Impact | {projected_balance:.2f} {default_currency}"
         )
@@ -53,7 +55,8 @@ def _render_card_balance_summary(result: ApplicationResult) -> str:
 def _group_obligations_by_card(obligations: Sequence[CashFlowObligation]) -> dict[str, Decimal]:
     totals: dict[str, Decimal] = {}
     for obligation in obligations:
-        totals[obligation.credit_card_id] = totals.get(obligation.credit_card_id, Decimal("0.00")) + obligation.total_amount
+        bnpl_amount = obligation.total_amount - obligation.current_balance_amount
+        totals[obligation.credit_card_id] = totals.get(obligation.credit_card_id, Decimal("0.00")) + bnpl_amount
     return totals
 
 

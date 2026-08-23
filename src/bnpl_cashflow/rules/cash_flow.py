@@ -27,6 +27,7 @@ def aggregate_cash_flow(installments: Sequence[Installment], due_dates: Sequence
         if bucket is None:
             bucket = {
                 "statement_cycle_end_date": due_date.statement_cycle_end_date,
+                "statement_cycle_start_date": due_date.statement_cycle_start_date,
                 "currency": installment.currency,
                 "installments": [],
                 "total_amount": Decimal("0.00"),
@@ -49,6 +50,7 @@ def aggregate_cash_flow(installments: Sequence[Installment], due_dates: Sequence
                 due_date=payment_due_date,
                 credit_card_id=credit_card_id,
                 statement_cycle_end_date=bucket["statement_cycle_end_date"],  # type: ignore[arg-type]
+                statement_cycle_start_date=bucket["statement_cycle_start_date"],  # type: ignore[arg-type]
                 cash_flow_year=payment_due_date.year,
                 cash_flow_month=payment_due_date.month,
                 cash_flow_period=f"{payment_due_date.year:04d}-{payment_due_date.month:02d}",
@@ -64,4 +66,3 @@ def aggregate_cash_flow(installments: Sequence[Installment], due_dates: Sequence
 def _sort_key(item: tuple[tuple[str, date], dict[str, object]]) -> tuple[date, str]:
     (credit_card_id, payment_due_date), _bucket = item
     return payment_due_date, credit_card_id
-

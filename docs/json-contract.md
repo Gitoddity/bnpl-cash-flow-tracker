@@ -31,6 +31,8 @@ Must contain at least one item.
 
 Each item defines a reusable card that BNPL plans may reference by `credit_card_id`.
 
+The application reads the current date from the system clock at runtime. Users must not provide a current date in the JSON payload. The runtime date anchors the active statement cycle and is displayed in the generated report.
+
 ### `bnpl_plans`
 
 Required array of BNPL plan objects.
@@ -62,7 +64,8 @@ If omitted, the application should use sensible defaults and render the standard
   "name": "Tangerine Mastercard",
   "statement_end_day": 17,
   "payment_due_day": 13,
-  "existing_balance": "500.00"
+  "current_balance": "500.00",
+  "current_balance_due_date": "2026-08-13"
 }
 ```
 
@@ -72,17 +75,20 @@ If omitted, the application should use sensible defaults and render the standard
 - `name`: string, required, human-readable card name.
 - `statement_end_day`: integer, required, 1 to 31.
 - `payment_due_day`: integer, required, 1 to 31.
-- `existing_balance`: string, optional, decimal money value, defaults to `0.00` when omitted.
+- `current_balance`: string, optional, decimal money value, defaults to `0.00` when omitted.
+- `current_balance_due_date`: string, optional, `YYYY-MM-DD`; assigns the current balance to a cash-flow due date.
 
 ### Rules
 
 - `id` must be unique across all cards.
 - `statement_end_day` and `payment_due_day` must be positive integers.
 - The application layer must pass the values to the existing `CreditCard` domain model.
-- `existing_balance` must parse as `Decimal`.
-- `existing_balance` must be zero or positive.
+- `current_balance` must parse as `Decimal`.
+- `current_balance` must be zero or positive.
 - Negative balances and credit balances are not supported in MVP 2.
-- `existing_balance` must use the same currency as the BNPL plans in the payload.
+- `current_balance` must use the same currency as the BNPL plans in the payload.
+- When `current_balance_due_date` is provided for a positive balance, that balance must appear in cash-flow obligations on the specified date.
+- Legacy payloads may use `existing_balance`; it is normalized to `current_balance`. Supplying both fields is invalid.
 
 ## BNPL Plan Object
 
@@ -96,6 +102,8 @@ If omitted, the application should use sensible defaults and render the standard
   "purchase_date": "2026-06-07",
   "first_installment_date": "2026-06-07",
   "installment_count": 4,
+  "paid_installment_count": 2,
+  "amount_paid": "60.00",
   "installment_frequency": "BIWEEKLY",
   "credit_card_id": "card_tangerine_mastercard"
 }
@@ -111,6 +119,8 @@ If omitted, the application should use sensible defaults and render the standard
 - `purchase_date`: string, required, `YYYY-MM-DD`.
 - `first_installment_date`: string, required, `YYYY-MM-DD`.
 - `installment_count`: integer, required, greater than zero.
+- `paid_installment_count`: integer, optional, defaults to `0`; must be between `0` and `installment_count`.
+- `amount_paid`: decimal string, optional, defaults to `"0.00"`; records the provider's exact completed-payment total.
 - `installment_frequency`: string, required.
 - Supported values:
   - `BIWEEKLY`.
@@ -121,6 +131,8 @@ If omitted, the application should use sensible defaults and render the standard
 - `purchase_amount` must be parsed as `Decimal`, not floating point.
 - `purchase_date` and `first_installment_date` are separate fields even if they are the same date.
 - The application layer must preserve the existing engine's behavior for installment rounding and schedule generation.
+- Installments numbered `1` through `paid_installment_count` are completed and must be excluded from projections and cash-flow obligations.
+- When `amount_paid` is provided, remaining installments must reconcile exactly to `purchase_amount - amount_paid`.
 - Unsupported currency values must be rejected.
 
 ## Normalization Rules
@@ -153,7 +165,7 @@ Normalization must not:
       "name": "Tangerine Mastercard",
       "statement_end_day": 17,
       "payment_due_day": 13,
-      "existing_balance": "500.00"
+      "current_balance": "500.00"
     }
   ],
   "bnpl_plans": [
@@ -183,14 +195,14 @@ Normalization must not:
       "name": "Tangerine Mastercard",
       "statement_end_day": 17,
       "payment_due_day": 13,
-      "existing_balance": "500.00"
+      "current_balance": "500.00"
     },
     {
       "id": "card_rbc_mastercard",
       "name": "RBC Mastercard",
       "statement_end_day": 6,
       "payment_due_day": 27,
-      "existing_balance": "250.00"
+      "current_balance": "250.00"
     }
   ],
   "bnpl_plans": [
@@ -242,7 +254,7 @@ The input layer must reject payloads that violate the contract.
 - Invalid day-of-month values.
 - Unsupported currency values.
 - Mixed-currency payloads.
-- Negative existing balances.
+- Negative current balances.
 
 ### Currency validation
 
@@ -257,13 +269,13 @@ Each BNPL plan must reference a real card by `credit_card_id`.
 
 The application must fail fast if a referenced card does not exist.
 
-### Existing Balance Validation
+### Current Balance Validation
 
-- `existing_balance` is optional.
-- If omitted, `existing_balance` defaults to `0.00`.
-- If provided, `existing_balance` must be a valid decimal string.
-- If provided, `existing_balance` must be greater than or equal to `0.00`.
-- `existing_balance` must use the same currency as the BNPL plans in the payload.
+- `current_balance` is optional.
+- If omitted, `current_balance` defaults to `0.00`.
+- If provided, `current_balance` must be a valid decimal string.
+- If provided, `current_balance` must be greater than or equal to `0.00`.
+- `current_balance` must use the same currency as the BNPL plans in the payload.
 - Overpayments and credit balances are not supported in MVP 2.
 
 ## Parsing Rules
@@ -324,7 +336,7 @@ The following are examples of validation failures the input/application layer sh
 - Invalid day-of-month value: `credit_cards[0].statement_end_day = 0` is outside the valid range.
 - Non-decimal purchase amount: `bnpl_plans[0].purchase_amount = "abc"` is not a valid decimal value.
 - Negative purchase amount: `bnpl_plans[0].purchase_amount = "-10.00"` must be rejected.
-- Negative existing balance: `credit_cards[0].existing_balance = "-1.00"` must be rejected.
+- Negative current balance: `credit_cards[0].current_balance = "-1.00"` must be rejected.
 
 ### Rules Engine Exception Boundary
 

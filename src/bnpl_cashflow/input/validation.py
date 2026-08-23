@@ -42,7 +42,9 @@ class CreditCardInput:
     name: str
     statement_end_day: int
     payment_due_day: int
-    existing_balance: Decimal = Decimal("0.00")
+    current_balance: Decimal = Decimal("0.00")
+    current_balance_due_date: date | None = None
+    profile_name: str = "Default profile"
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +59,8 @@ class BNPLPlanInput:
     installment_count: int
     installment_frequency: str
     credit_card_id: str
+    paid_installment_count: int = 0
+    amount_paid: Decimal = Decimal("0.00")
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,15 +137,24 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
         name = _require_string_field(item, "name", path, issues)
         statement_end_day = _require_day_of_month(item, "statement_end_day", path, issues)
         payment_due_day = _require_day_of_month(item, "payment_due_day", path, issues)
-        existing_balance = _require_non_negative_decimal_field(item, "existing_balance", path, issues)
+        current_balance = _resolve_current_balance(item, path, issues)
+        current_balance_due_date = _resolve_current_balance_due_date(item, path, issues)
+        profile_name = _optional_profile_name(item, path, issues)
 
         if (
             card_id is None
             or name is None
             or statement_end_day is None
             or payment_due_day is None
-            or existing_balance is None
+            or current_balance is None
+            or profile_name is None
         ):
+            continue
+
+        if (
+            "current_balance_due_date" in item
+            or "existing_balance_due_date" in item
+        ) and current_balance_due_date is None:
             continue
 
         if card_id in seen_ids:
@@ -161,7 +174,9 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
                 name=name,
                 statement_end_day=statement_end_day,
                 payment_due_day=payment_due_day,
-                existing_balance=existing_balance,
+                current_balance=current_balance,
+                current_balance_due_date=current_balance_due_date,
+                profile_name=profile_name,
             )
         )
 
@@ -194,6 +209,8 @@ def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue]) -> list[BNPL
         installment_count = _require_positive_int_field(item, "installment_count", path, issues)
         installment_frequency = _require_installment_frequency_field(item, "installment_frequency", path, issues)
         credit_card_id = _require_string_field(item, "credit_card_id", path, issues)
+        paid_installment_count = _optional_non_negative_int_field(item, "paid_installment_count", path, issues)
+        amount_paid = _require_non_negative_decimal_field(item, "amount_paid", path, issues)
 
         if (
             plan_id is None
@@ -206,7 +223,29 @@ def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue]) -> list[BNPL
             or installment_count is None
             or installment_frequency is None
             or credit_card_id is None
+            or paid_installment_count is None
+            or amount_paid is None
         ):
+            continue
+
+        if paid_installment_count > installment_count:
+            issues.append(
+                ValidationIssue(
+                    path=f"{path}.paid_installment_count",
+                    message="must not exceed installment_count",
+                    value=paid_installment_count,
+                )
+            )
+            continue
+
+        if amount_paid > purchase_amount:
+            issues.append(
+                ValidationIssue(
+                    path=f"{path}.amount_paid",
+                    message="must not exceed purchase_amount",
+                    value=str(amount_paid),
+                )
+            )
             continue
 
         if plan_id in seen_ids:
@@ -232,6 +271,8 @@ def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue]) -> list[BNPL
                 installment_count=installment_count,
                 installment_frequency=installment_frequency,
                 credit_card_id=credit_card_id,
+                paid_installment_count=paid_installment_count,
+                amount_paid=amount_paid,
             )
         )
 
@@ -330,6 +371,25 @@ def _require_positive_int_field(
     return value
 
 
+def _optional_non_negative_int_field(
+    item: Mapping[str, Any],
+    field_name: str,
+    path: str,
+    issues: list[ValidationIssue],
+) -> int | None:
+    if field_name not in item:
+        return 0
+
+    value = item[field_name]
+    if isinstance(value, bool) or not isinstance(value, int):
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be an integer", value=value))
+        return None
+    if value < 0:
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be zero or greater", value=value))
+        return None
+    return value
+
+
 def _require_decimal_field(
     item: Mapping[str, Any],
     field_name: str,
@@ -395,6 +455,50 @@ def _require_non_negative_decimal_field(
     return decimal_value
 
 
+def _resolve_current_balance(
+    item: Mapping[str, Any],
+    path: str,
+    issues: list[ValidationIssue],
+) -> Decimal | None:
+    if "current_balance" in item and "existing_balance" in item:
+        issues.append(
+            ValidationIssue(
+                path=f"{path}.current_balance",
+                message="must not be provided together with legacy existing_balance",
+            )
+        )
+        return None
+    field_name = "current_balance" if "current_balance" in item else "existing_balance"
+    return _require_non_negative_decimal_field(item, field_name, path, issues)
+
+
+def _resolve_current_balance_due_date(
+    item: Mapping[str, Any],
+    path: str,
+    issues: list[ValidationIssue],
+) -> date | None:
+    if "current_balance_due_date" in item and "existing_balance_due_date" in item:
+        issues.append(
+            ValidationIssue(
+                path=f"{path}.current_balance_due_date",
+                message="must not be provided together with legacy existing_balance_due_date",
+            )
+        )
+        return None
+    field_name = (
+        "current_balance_due_date"
+        if "current_balance_due_date" in item
+        else "existing_balance_due_date"
+    )
+    return _optional_date_field(item, field_name, path, issues)
+
+
+def _optional_profile_name(item: Mapping[str, Any], path: str, issues: list[ValidationIssue]) -> str | None:
+    if "profile_name" not in item:
+        return "Default profile"
+    return _require_string_field(item, "profile_name", path, issues)
+
+
 def _require_currency_field(
     item: Mapping[str, Any],
     field_name: str,
@@ -427,6 +531,17 @@ def _require_date_field(
     except ValueError:
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be a valid YYYY-MM-DD date", value=value))
         return None
+
+
+def _optional_date_field(
+    item: Mapping[str, Any],
+    field_name: str,
+    path: str,
+    issues: list[ValidationIssue],
+) -> date | None:
+    if field_name not in item:
+        return None
+    return _require_date_field(item, field_name, path, issues)
 
 
 def _require_installment_frequency_field(

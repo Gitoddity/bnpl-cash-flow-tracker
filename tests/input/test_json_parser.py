@@ -88,10 +88,53 @@ def test_valid_single_card_single_plan_payload():
     assert len(parsed.credit_cards) == 1
     assert len(parsed.bnpl_plans) == 1
     assert parsed.credit_cards[0].id == "card_tangerine_mastercard"
-    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
+    assert parsed.credit_cards[0].current_balance == Decimal("0.00")
     assert parsed.bnpl_plans[0].currency == "CAD"
     assert parsed.bnpl_plans[0].purchase_amount == Decimal("120.00")
     assert parsed.bnpl_plans[0].purchase_date == date(2026, 6, 7)
+    assert parsed.bnpl_plans[0].paid_installment_count == 0
+    assert parsed.bnpl_plans[0].amount_paid == Decimal("0.00")
+
+
+def test_valid_paid_installment_count():
+    payload = _single_plan_payload()
+    payload["bnpl_plans"][0]["paid_installment_count"] = 2
+
+    parsed = validate_payload(payload)
+
+    assert parsed.bnpl_plans[0].paid_installment_count == 2
+
+
+def test_valid_amount_paid():
+    payload = _single_plan_payload()
+    payload["bnpl_plans"][0]["paid_installment_count"] = 1
+    payload["bnpl_plans"][0]["amount_paid"] = "30.01"
+
+    parsed = validate_payload(payload)
+
+    assert parsed.bnpl_plans[0].amount_paid == Decimal("30.01")
+
+
+@pytest.mark.parametrize("value", ["-0.01", "120.01", "invalid"])
+def test_invalid_amount_paid_rejected(value):
+    payload = _single_plan_payload()
+    payload["bnpl_plans"][0]["amount_paid"] = value
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "bnpl_plans[0].amount_paid" for issue in exc_info.value.issues)
+
+
+@pytest.mark.parametrize("value", [-1, 5, True, "2"])
+def test_invalid_paid_installment_count_rejected(value):
+    payload = _single_plan_payload()
+    payload["bnpl_plans"][0]["paid_installment_count"] = value
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "bnpl_plans[0].paid_installment_count" for issue in exc_info.value.issues)
 
 
 def test_valid_multiple_card_multiple_plan_payload():
@@ -221,49 +264,89 @@ def test_negative_or_zero_amount_rejected():
     assert any(issue.path == "bnpl_plans[0].purchase_amount" for issue in exc_info.value.issues)
 
 
-def test_existing_balance_defaults_to_zero_when_omitted():
+def test_current_balance_defaults_to_zero_when_omitted():
     parsed = validate_payload(_single_plan_payload())
 
-    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
+    assert parsed.credit_cards[0].current_balance == Decimal("0.00")
 
 
-def test_valid_positive_existing_balance():
+def test_valid_positive_current_balance():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["current_balance"] = "500.00"
+
+    parsed = validate_payload(payload)
+
+    assert parsed.credit_cards[0].current_balance == Decimal("500.00")
+
+
+def test_legacy_existing_balance_is_normalized_to_current_balance():
     payload = _single_plan_payload()
     payload["credit_cards"][0]["existing_balance"] = "500.00"
 
     parsed = validate_payload(payload)
 
-    assert parsed.credit_cards[0].existing_balance == Decimal("500.00")
+    assert parsed.credit_cards[0].current_balance == Decimal("500.00")
 
 
-def test_valid_zero_existing_balance():
+def test_current_and_legacy_balance_cannot_both_be_provided():
     payload = _single_plan_payload()
-    payload["credit_cards"][0]["existing_balance"] = "0.00"
+    payload["credit_cards"][0]["current_balance"] = "500.00"
+    payload["credit_cards"][0]["existing_balance"] = "500.00"
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "credit_cards[0].current_balance" for issue in exc_info.value.issues)
+
+
+def test_valid_current_balance_due_date():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["current_balance"] = "500.00"
+    payload["credit_cards"][0]["current_balance_due_date"] = "2026-08-13"
 
     parsed = validate_payload(payload)
 
-    assert parsed.credit_cards[0].existing_balance == Decimal("0.00")
+    assert parsed.credit_cards[0].current_balance_due_date == date(2026, 8, 13)
+
+
+def test_invalid_current_balance_due_date_rejected():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["current_balance_due_date"] = "08/13/2026"
+
+    with pytest.raises(InputValidationError) as exc_info:
+        validate_payload(payload)
+
+    assert any(issue.path == "credit_cards[0].current_balance_due_date" for issue in exc_info.value.issues)
+
+
+def test_valid_zero_current_balance():
+    payload = _single_plan_payload()
+    payload["credit_cards"][0]["current_balance"] = "0.00"
+
+    parsed = validate_payload(payload)
+
+    assert parsed.credit_cards[0].current_balance == Decimal("0.00")
 
 
 @pytest.mark.parametrize("value", ["abc", "12.3.4"])
-def test_invalid_existing_balance_decimal_rejected(value):
+def test_invalid_current_balance_decimal_rejected(value):
     payload = _single_plan_payload()
-    payload["credit_cards"][0]["existing_balance"] = value
+    payload["credit_cards"][0]["current_balance"] = value
 
     with pytest.raises(InputValidationError) as exc_info:
         validate_payload(payload)
 
-    assert any(issue.path == "credit_cards[0].existing_balance" for issue in exc_info.value.issues)
+    assert any(issue.path == "credit_cards[0].current_balance" for issue in exc_info.value.issues)
 
 
-def test_negative_existing_balance_rejected():
+def test_negative_current_balance_rejected():
     payload = _single_plan_payload()
-    payload["credit_cards"][0]["existing_balance"] = "-1.00"
+    payload["credit_cards"][0]["current_balance"] = "-1.00"
 
     with pytest.raises(InputValidationError) as exc_info:
         validate_payload(payload)
 
-    assert any(issue.path == "credit_cards[0].existing_balance" for issue in exc_info.value.issues)
+    assert any(issue.path == "credit_cards[0].current_balance" for issue in exc_info.value.issues)
 
 
 def test_unsupported_currency_rejected():

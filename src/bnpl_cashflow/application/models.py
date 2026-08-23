@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 
 from bnpl_cashflow.domain import (
     BNPLPlan,
@@ -35,4 +36,4 @@ class ApplicationResult:
     cash_flow_obligations: tuple[CashFlowObligation, ...]
     projections: tuple[InstallmentProjection, ...]
     output_options: Mapping[str, object]
-
+    as_of_date: date | None = None

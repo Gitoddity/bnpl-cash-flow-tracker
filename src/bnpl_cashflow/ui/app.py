@@ -2,23 +2,17 @@ from __future__ import annotations
 
 import streamlit as st
 
-from bnpl_cashflow.ui.screens import render_placeholder_step, render_welcome_screen
-from bnpl_cashflow.ui.state import PLACEHOLDER_STEP, WELCOME_STEP, get_current_step, initialize_session_state, set_current_step
+from bnpl_cashflow.ui.screens import render_welcome_screen, render_workspace_screen
+from bnpl_cashflow.ui.state import WELCOME_STEP, get_current_step, initialize_session_state
 
+st.set_page_config(
+    page_title="BNPL Cash Flow Tracker",
+    page_icon=":material/account_balance_wallet:",
+    layout="centered",
+)
+initialize_session_state()
 
-def main() -> None:
-    st.set_page_config(page_title="BNPL Cash Flow Tracker", page_icon="💳", layout="centered")
-    initialize_session_state()
-
-    step = get_current_step()
-    if step == WELCOME_STEP:
-        render_welcome_screen()
-        return
-
-    if step == PLACEHOLDER_STEP:
-        render_placeholder_step()
-        return
-
-
-if __name__ == "__main__":
-    main()
+if get_current_step() == WELCOME_STEP:
+    render_welcome_screen()
+else:
+    render_workspace_screen()

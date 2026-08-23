@@ -43,6 +43,14 @@ def _require_positive_int(value: int, field_name: str) -> int:
     return value
 
 
+def _require_non_negative_int(value: int, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise TypeError(f"{field_name} must be an integer")
+    if value < 0:
+        raise ValueError(f"{field_name} must be zero or greater")
+    return value
+
+
 def _require_day_of_month(value: int, field_name: str) -> int:
     value = _require_positive_int(value, field_name)
     if value > 31:
@@ -62,14 +70,23 @@ class CreditCard:
     name: str
     statement_end_day: int
     payment_due_day: int
-    existing_balance: Decimal = Decimal("0.00")
+    current_balance: Decimal = Decimal("0.00")
+    current_balance_due_date: date | None = None
+    profile_name: str = "Default profile"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
         object.__setattr__(self, "name", _require_non_empty_text(self.name, "name"))
+        object.__setattr__(self, "profile_name", _require_non_empty_text(self.profile_name, "profile_name"))
         object.__setattr__(self, "statement_end_day", _require_day_of_month(self.statement_end_day, "statement_end_day"))
         object.__setattr__(self, "payment_due_day", _require_day_of_month(self.payment_due_day, "payment_due_day"))
-        object.__setattr__(self, "existing_balance", _require_non_negative_decimal(self.existing_balance, "existing_balance"))
+        object.__setattr__(self, "current_balance", _require_non_negative_decimal(self.current_balance, "current_balance"))
+        if self.current_balance_due_date is not None:
+            object.__setattr__(
+                self,
+                "current_balance_due_date",
+                _require_date(self.current_balance_due_date, "current_balance_due_date"),
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +101,8 @@ class BNPLPlan:
     installment_count: int
     installment_frequency: InstallmentFrequency
     credit_card_id: str
+    paid_installment_count: int = 0
+    amount_paid: Decimal = Decimal("0.00")
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
@@ -96,6 +115,16 @@ class BNPLPlan:
         object.__setattr__(self, "installment_count", _require_positive_int(self.installment_count, "installment_count"))
         object.__setattr__(self, "installment_frequency", _require_frequency(self.installment_frequency, "installment_frequency"))
         object.__setattr__(self, "credit_card_id", _require_non_empty_text(self.credit_card_id, "credit_card_id"))
+        object.__setattr__(
+            self,
+            "paid_installment_count",
+            _require_non_negative_int(self.paid_installment_count, "paid_installment_count"),
+        )
+        if self.paid_installment_count > self.installment_count:
+            raise ValueError("paid_installment_count must not exceed installment_count")
+        object.__setattr__(self, "amount_paid", _require_non_negative_decimal(self.amount_paid, "amount_paid"))
+        if self.amount_paid > self.purchase_amount:
+            raise ValueError("amount_paid must not exceed purchase_amount")
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,11 +164,14 @@ class DueDate:
     credit_card_id: str
     statement_cycle_end_date: date
     payment_due_date: date
+    statement_cycle_start_date: date | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "credit_card_id", _require_non_empty_text(self.credit_card_id, "credit_card_id"))
         object.__setattr__(self, "statement_cycle_end_date", _require_date(self.statement_cycle_end_date, "statement_cycle_end_date"))
         object.__setattr__(self, "payment_due_date", _require_date(self.payment_due_date, "payment_due_date"))
+        if self.statement_cycle_start_date is not None:
+            object.__setattr__(self, "statement_cycle_start_date", _require_date(self.statement_cycle_start_date, "statement_cycle_start_date"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,16 +185,27 @@ class CashFlowObligation:
     currency: str
     total_amount: Decimal
     installments: tuple[Installment, ...]
+    current_balance_amount: Decimal = Decimal("0.00")
+    statement_cycle_start_date: date | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "due_date", _require_date(self.due_date, "due_date"))
         object.__setattr__(self, "credit_card_id", _require_non_empty_text(self.credit_card_id, "credit_card_id"))
         object.__setattr__(self, "statement_cycle_end_date", _require_date(self.statement_cycle_end_date, "statement_cycle_end_date"))
+        if self.statement_cycle_start_date is not None:
+            object.__setattr__(self, "statement_cycle_start_date", _require_date(self.statement_cycle_start_date, "statement_cycle_start_date"))
         object.__setattr__(self, "cash_flow_year", _require_positive_int(self.cash_flow_year, "cash_flow_year"))
         object.__setattr__(self, "cash_flow_month", _require_positive_int(self.cash_flow_month, "cash_flow_month"))
         object.__setattr__(self, "cash_flow_period", _require_non_empty_text(self.cash_flow_period, "cash_flow_period"))
         object.__setattr__(self, "currency", _require_non_empty_text(self.currency, "currency"))
         object.__setattr__(self, "total_amount", _require_decimal(self.total_amount, "total_amount"))
+        object.__setattr__(
+            self,
+            "current_balance_amount",
+            _require_non_negative_decimal(self.current_balance_amount, "current_balance_amount"),
+        )
+        if self.current_balance_amount > self.total_amount:
+            raise ValueError("current_balance_amount must not exceed total_amount")
         if not isinstance(self.installments, tuple):
             raise TypeError("installments must be a tuple of Installment instances")
         for installment in self.installments:

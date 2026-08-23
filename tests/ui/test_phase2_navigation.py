@@ -5,7 +5,7 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 
-def test_phase2_navigation_moves_from_welcome_to_placeholder_step():
+def test_navigation_moves_from_welcome_to_card_entry():
     app_path = Path(__file__).resolve().parents[2] / "src" / "bnpl_cashflow" / "ui" / "app.py"
 
     at = AppTest.from_file(str(app_path))
@@ -16,4 +16,7 @@ def test_phase2_navigation_moves_from_welcome_to_placeholder_step():
     at.button[0].click()
     at.run()
 
+    at.segmented_control[0].set_value("Profiles")
+    at.run()
+    assert any(button.label == "Add profile" for button in at.button)
     assert any(button.label == "Back" for button in at.button)

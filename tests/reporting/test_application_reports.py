@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from bnpl_cashflow.application import run_application
+from bnpl_cashflow.application import ApplicationService, run_application
 from bnpl_cashflow.input.validation import BNPLPlanInput, CreditCardInput, ValidatedPayload
 from bnpl_cashflow.reporting import render_application_report
 
@@ -18,7 +18,7 @@ def _single_payload() -> ValidatedPayload:
                 name="Tangerine Mastercard",
                 statement_end_day=17,
                 payment_due_day=13,
-                existing_balance=Decimal("500.00"),
+                current_balance=Decimal("500.00"),
             ),
         ),
         bnpl_plans=(
@@ -92,7 +92,7 @@ def test_rendering_single_card_single_plan_application_result():
 
     assert rendered.startswith("BNPL Cash Flow Report")
     assert "Card Balances" in rendered
-    assert "Tangerine Mastercard | Existing Balance | 500.00 CAD" in rendered
+    assert "Tangerine Mastercard | Current Balance | 500.00 CAD" in rendered
     assert "Projected Balance Impact | 620.00 CAD" in rendered
     assert "Installment Schedule" in rendered
     assert "Installment Projections" in rendered
@@ -195,3 +195,43 @@ def test_reporting_preserves_existing_mvp1_report_behavior():
     assert "2026-07-13 | card_tangerine_mastercard | 2026-07 | 30.00 CAD" in rendered
     assert "2026-08-13 | card_tangerine_mastercard | 2026-08 | 60.00 CAD" in rendered
     assert "4. 2026-07-19 - 30.00 CAD" in rendered
+
+
+def test_dated_current_balance_is_shown_without_double_counting_bnpl_summary():
+    payload = _single_payload()
+    card = CreditCardInput(
+        id=payload.credit_cards[0].id,
+        name=payload.credit_cards[0].name,
+        statement_end_day=payload.credit_cards[0].statement_end_day,
+        payment_due_day=payload.credit_cards[0].payment_due_day,
+        current_balance=Decimal("500.00"),
+        current_balance_due_date=date(2026, 8, 13),
+    )
+    result = run_application(
+        ValidatedPayload(
+            credit_cards=(card,),
+            bnpl_plans=payload.bnpl_plans,
+            output_options={},
+        )
+    )
+
+    rendered = render_application_report(result)
+
+    assert "BNPL Obligations | 120.00 CAD" in rendered
+    assert "Projected Balance Impact | 620.00 CAD" in rendered
+    assert "2026-08-13 | card_tangerine_mastercard | 2026-08 | 560.00 CAD" in rendered
+
+
+def test_report_displays_as_of_date():
+    payload = _single_payload()
+    result = ApplicationService(today_provider=lambda: date(2026, 7, 25)).run(
+        ValidatedPayload(
+            credit_cards=payload.credit_cards,
+            bnpl_plans=payload.bnpl_plans,
+            output_options={},
+        )
+    )
+
+    rendered = render_application_report(result)
+
+    assert "As of 2026-07-25" in rendered

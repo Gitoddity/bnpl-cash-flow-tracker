@@ -19,7 +19,7 @@ def _validated_single_payload() -> ValidatedPayload:
                 name="Tangerine Mastercard",
                 statement_end_day=17,
                 payment_due_day=13,
-                existing_balance=Decimal("500.00"),
+                current_balance=Decimal("500.00"),
             ),
         ),
         bnpl_plans=(
@@ -87,7 +87,7 @@ def _validated_multi_payload() -> ValidatedPayload:
 
 
 def test_valid_single_card_single_plan_orchestration():
-    service = ApplicationService()
+    service = ApplicationService(today_provider=lambda: date(2026, 7, 25))
 
     result = service.run(_validated_single_payload())
 
@@ -95,7 +95,7 @@ def test_valid_single_card_single_plan_orchestration():
     assert len(result.credit_cards) == 1
     assert len(result.bnpl_plans) == 1
     assert len(result.plan_results) == 1
-    assert result.credit_cards[0].existing_balance == Decimal("500.00")
+    assert result.credit_cards[0].current_balance == Decimal("500.00")
     assert result.plan_results[0].credit_card.id == "card_tangerine_mastercard"
     assert result.plan_results[0].plan.id == "plan_klarna_laptop_sleeve"
     assert [item.installment_date for item in result.installments] == [
@@ -105,8 +105,73 @@ def test_valid_single_card_single_plan_orchestration():
         date(2026, 7, 19),
     ]
     assert [item.cash_flow_period for item in result.cash_flow_obligations] == ["2026-07", "2026-08", "2026-09"]
-    assert sum((item.total_amount for item in result.cash_flow_obligations), Decimal("0.00")) == Decimal("120.00")
+    assert sum((item.total_amount for item in result.cash_flow_obligations), Decimal("0.00")) == Decimal("620.00")
+    assert sum(
+        (item.total_amount - item.current_balance_amount for item in result.cash_flow_obligations),
+        Decimal("0.00"),
+    ) == Decimal("120.00")
     assert all(isinstance(item, PlanProcessingResult) for item in result.plan_results)
+
+
+def test_paid_installments_are_excluded_from_future_results():
+    payload = _validated_single_payload()
+    paid_plan = BNPLPlanInput(
+        id=payload.bnpl_plans[0].id,
+        provider_name=payload.bnpl_plans[0].provider_name,
+        plan_name=payload.bnpl_plans[0].plan_name,
+        purchase_amount=payload.bnpl_plans[0].purchase_amount,
+        currency=payload.bnpl_plans[0].currency,
+        purchase_date=payload.bnpl_plans[0].purchase_date,
+        first_installment_date=payload.bnpl_plans[0].first_installment_date,
+        installment_count=payload.bnpl_plans[0].installment_count,
+        installment_frequency=payload.bnpl_plans[0].installment_frequency,
+        credit_card_id=payload.bnpl_plans[0].credit_card_id,
+        paid_installment_count=2,
+    )
+
+    result = run_application(
+        ValidatedPayload(
+            credit_cards=payload.credit_cards,
+            bnpl_plans=(paid_plan,),
+            output_options={},
+        )
+    )
+
+    assert [item.installment_number for item in result.installments] == [3, 4]
+    assert [item.installment_number for item in result.projections] == [3, 4]
+    assert sum(
+        (item.total_amount - item.current_balance_amount for item in result.cash_flow_obligations),
+        Decimal("0.00"),
+    ) == Decimal("60.00")
+
+
+def test_exact_amount_paid_reconciles_provider_rounding():
+    payload = _validated_single_payload()
+    paid_plan = BNPLPlanInput(
+        id=payload.bnpl_plans[0].id,
+        provider_name=payload.bnpl_plans[0].provider_name,
+        plan_name=payload.bnpl_plans[0].plan_name,
+        purchase_amount=Decimal("229.38"),
+        currency=payload.bnpl_plans[0].currency,
+        purchase_date=payload.bnpl_plans[0].purchase_date,
+        first_installment_date=payload.bnpl_plans[0].first_installment_date,
+        installment_count=4,
+        installment_frequency=payload.bnpl_plans[0].installment_frequency,
+        credit_card_id=payload.bnpl_plans[0].credit_card_id,
+        paid_installment_count=1,
+        amount_paid=Decimal("57.35"),
+    )
+
+    result = run_application(
+        ValidatedPayload(
+            credit_cards=payload.credit_cards,
+            bnpl_plans=(paid_plan,),
+            output_options={},
+        )
+    )
+
+    assert result.installments[0].installment_amount == Decimal("57.34")
+    assert sum((item.installment_amount for item in result.installments), Decimal("0.00")) == Decimal("172.03")
 
 
 def test_valid_multiple_card_multiple_plan_orchestration():
@@ -168,7 +233,7 @@ def test_preserves_mvp1_calculation_behavior_through_service():
     ]
 
 
-def test_existing_balance_does_not_change_engine_calculations():
+def test_current_balance_does_not_change_installment_calculations():
     baseline = run_application(
         ValidatedPayload(
             credit_cards=(
@@ -188,8 +253,55 @@ def test_existing_balance_does_not_change_engine_calculations():
     assert baseline.installments == with_balance.installments
     assert baseline.statement_cycles == with_balance.statement_cycles
     assert baseline.due_dates == with_balance.due_dates
-    assert baseline.cash_flow_obligations == with_balance.cash_flow_obligations
     assert baseline.projections == with_balance.projections
+    assert sum(
+        (item.total_amount - item.current_balance_amount for item in with_balance.cash_flow_obligations),
+        Decimal("0.00"),
+    ) == sum(
+        (item.total_amount for item in baseline.cash_flow_obligations),
+        Decimal("0.00"),
+    )
+
+
+def test_dated_current_balance_becomes_cash_flow_obligation():
+    payload = _validated_single_payload()
+    card = CreditCardInput(
+        id=payload.credit_cards[0].id,
+        name=payload.credit_cards[0].name,
+        statement_end_day=payload.credit_cards[0].statement_end_day,
+        payment_due_day=payload.credit_cards[0].payment_due_day,
+        current_balance=Decimal("500.00"),
+        current_balance_due_date=date(2026, 8, 13),
+    )
+
+    result = run_application(
+        ValidatedPayload(
+            credit_cards=(card,),
+            bnpl_plans=payload.bnpl_plans,
+            output_options={},
+        )
+    )
+
+    august = next(item for item in result.cash_flow_obligations if item.due_date == date(2026, 8, 13))
+    assert august.total_amount == Decimal("560.00")
+    assert august.current_balance_amount == Decimal("500.00")
+    assert sum((item.installment_amount for item in august.installments), Decimal("0.00")) == Decimal("60.00")
+
+
+def test_as_of_date_derives_current_balance_due_date():
+    payload = _validated_single_payload()
+
+    result = ApplicationService(today_provider=lambda: date(2026, 7, 25)).run(
+        ValidatedPayload(
+            credit_cards=payload.credit_cards,
+            bnpl_plans=payload.bnpl_plans,
+            output_options={},
+        )
+    )
+
+    september = next(item for item in result.cash_flow_obligations if item.due_date == date(2026, 9, 13))
+    assert september.current_balance_amount == Decimal("500.00")
+    assert result.as_of_date == date(2026, 7, 25)
 
 
 def test_deterministic_output_ordering():
