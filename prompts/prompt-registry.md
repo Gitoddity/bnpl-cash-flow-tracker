@@ -1,5 +1,37 @@
 # Prompt Registry
 
+## Prompt 019 — Edit credit cards (2026-09-24)
+
+Full request and outcomes: `prompts/019-edit-credit-card.md`. Pencil-button editing,
+shared card form/validation, profile-scoped PATCH, stable IDs and plan references.
+
+## Prompt 018 — Cards overview and payment-plan entry (2026-09-24)
+
+Request and decisions: `prompts/018-cards-overview.md`. Stitch-based overview,
+visible transient save notification, resolved upcoming dates from existing Python
+rules, and profile-scoped payment-plan entry. Related: `docs/react-ui-migration.md`,
+`frontend/src/CardsWorkspace.tsx`, and `src/bnpl_cashflow/application/services.py`.
+
+## Prompt 017 — Add Credit Card flow (2026-09-24)
+
+Full request: `prompts/017-add-credit-card.md`. Add a Stitch-based form and overview,
+profile-scoped transactional API persistence, shared Python validation, and transient
+success feedback. No card credentials or financial rules in React. See
+`docs/react-ui-migration.md`, `docs/react-development.md`, `frontend/src/CardsWorkspace.tsx`,
+and `src/bnpl_cashflow/api/profiles.py`.
+
+## Prompt 016 — Create Profile screen (2026-09-24)
+
+Full request and outcomes: `prompts/016-create-profile-screen.md`.
+Dedicated Stitch-based creation screen, backend validation, active-profile navigation,
+and existing import reuse. See `docs/react-ui-migration.md` and `docs/react-development.md`.
+
+## Prompt 015 — React landing migration (2026-09-24)
+
+Request and decisions: `prompts/015-react-landing.md`.
+Scope: React/Vite landing plus FastAPI profile creation/import; preserve Streamlit
+and the Python calculation pipeline. Architecture: `docs/react-ui-migration.md`.
+
 This registry is the historical record of significant prompts that influence product, architecture, domain model, calculation rules, testing, or implementation decisions.
 
 For every major prompt used during development:

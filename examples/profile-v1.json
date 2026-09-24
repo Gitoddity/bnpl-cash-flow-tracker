@@ -1,0 +1,7 @@
+{
+  "format": "bnpl-profile",
+  "version": 1,
+  "profile": { "id": "example-personal", "name": "Example Personal" },
+  "credit_cards": [],
+  "bnpl_plans": []
+}

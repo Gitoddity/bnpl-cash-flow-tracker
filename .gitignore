@@ -3,3 +3,7 @@ __pycache__/
 .venv/
 .vscode/
 .pytest_cache/
+node_modules/
+frontend/dist/
+.local-data/
+*.tsbuildinfo

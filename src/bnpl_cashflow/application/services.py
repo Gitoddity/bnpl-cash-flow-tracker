@@ -96,6 +96,23 @@ def run_application(payload: ValidatedPayload) -> ApplicationResult:
     return ApplicationService().run(payload)
 
 
+def resolve_upcoming_card_dates(
+    statement_end_day: int, payment_due_day: int, as_of_date: date,
+) -> tuple[date, date]:
+    """Next schedule occurrences on/after as_of_date, including a prior cycle's due.
+
+    Reuse the application's current-balance billing semantics, including clamping
+    short months and requiring the payment date to be strictly after its close.
+    These are scheduled dates, not evidence of a statement balance or amount owed.
+    """
+    next_close = _statement_end_on_or_after(as_of_date, statement_end_day)
+    previous_close = _statement_end_before(next_close, statement_end_day)
+    next_due = _payment_due_after(previous_close, payment_due_day)
+    if next_due < as_of_date:
+        next_due = _payment_due_after(next_close, payment_due_day)
+    return next_close, next_due
+
+
 def _build_credit_card(card_input: CreditCardInput) -> CreditCard:
     return CreditCard(
         id=card_input.id,

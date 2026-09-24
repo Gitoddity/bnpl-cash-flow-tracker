@@ -71,6 +71,15 @@ class ValidatedPayload:
 
 
 def validate_payload(payload: Mapping[str, Any]) -> ValidatedPayload:
+    return _validate_payload(payload, allow_empty=False)
+
+
+def validate_profile_payload(payload: Mapping[str, Any]) -> ValidatedPayload:
+    """Validate portable profile contents, including empty setup-stage profiles."""
+    return _validate_payload(payload, allow_empty=True)
+
+
+def _validate_payload(payload: Mapping[str, Any], *, allow_empty: bool) -> ValidatedPayload:
     if not isinstance(payload, Mapping):
         raise InputValidationError([ValidationIssue(path="$", message="payload must be a mapping", value=payload)])
 
@@ -89,12 +98,12 @@ def validate_payload(payload: Mapping[str, Any]) -> ValidatedPayload:
     normalized_bnpl_plans: list[BNPLPlanInput] = []
 
     if "credit_cards" in payload:
-        normalized_credit_cards = _validate_credit_cards(raw_credit_cards, issues)
+        normalized_credit_cards = _validate_credit_cards(raw_credit_cards, issues, allow_empty=allow_empty)
 
     if "bnpl_plans" in payload:
-        normalized_bnpl_plans = _validate_bnpl_plans(raw_bnpl_plans, issues)
+        normalized_bnpl_plans = _validate_bnpl_plans(raw_bnpl_plans, issues, allow_empty=allow_empty)
 
-    if normalized_credit_cards and normalized_bnpl_plans:
+    if normalized_bnpl_plans and (normalized_credit_cards or allow_empty):
         _validate_references(normalized_bnpl_plans, normalized_credit_cards, issues)
         _validate_currency_consistency(normalized_bnpl_plans, issues)
 
@@ -117,11 +126,11 @@ def _validate_output_options(value: Any, issues: list[ValidationIssue]) -> Mappi
     return dict(value)
 
 
-def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[CreditCardInput]:
+def _validate_credit_cards(value: Any, issues: list[ValidationIssue], *, allow_empty: bool = False) -> list[CreditCardInput]:
     if not isinstance(value, list):
         issues.append(ValidationIssue(path="credit_cards", message="must be an array", value=value))
         return []
-    if not value:
+    if not value and not allow_empty:
         issues.append(ValidationIssue(path="credit_cards", message="must contain at least one item", value=value))
         return []
 
@@ -183,11 +192,11 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
     return cards
 
 
-def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue]) -> list[BNPLPlanInput]:
+def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue], *, allow_empty: bool = False) -> list[BNPLPlanInput]:
     if not isinstance(value, list):
         issues.append(ValidationIssue(path="bnpl_plans", message="must be an array", value=value))
         return []
-    if not value:
+    if not value and not allow_empty:
         issues.append(ValidationIssue(path="bnpl_plans", message="must contain at least one item", value=value))
         return []
 
@@ -416,6 +425,9 @@ def _require_decimal_field(
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be a valid decimal value", value=value))
         return None
 
+    if not decimal_value.is_finite():
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be finite"))
+        return None
     if decimal_value <= 0:
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be greater than zero", value=value))
         return None
@@ -448,6 +460,9 @@ def _require_non_negative_decimal_field(
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be a valid decimal value", value=value))
         return None
 
+    if not decimal_value.is_finite():
+        issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be finite"))
+        return None
     if decimal_value < 0:
         issues.append(ValidationIssue(path=f"{path}.{field_name}", message="must be zero or greater", value=value))
         return None
