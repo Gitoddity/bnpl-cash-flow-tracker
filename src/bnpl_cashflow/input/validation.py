@@ -44,7 +44,7 @@ class CreditCardInput:
     payment_due_day: int
     current_balance: Decimal = Decimal("0.00")
     current_balance_due_date: date | None = None
-    profile_name: str = "Default profile"
+    profile_id: str = "profile_1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,7 +139,7 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
         payment_due_day = _require_day_of_month(item, "payment_due_day", path, issues)
         current_balance = _resolve_current_balance(item, path, issues)
         current_balance_due_date = _resolve_current_balance_due_date(item, path, issues)
-        profile_name = _optional_profile_name(item, path, issues)
+        profile_id = _optional_profile_id(item, path, issues)
 
         if (
             card_id is None
@@ -147,7 +147,7 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
             or statement_end_day is None
             or payment_due_day is None
             or current_balance is None
-            or profile_name is None
+            or profile_id is None
         ):
             continue
 
@@ -176,7 +176,7 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue]) -> list[Cr
                 payment_due_day=payment_due_day,
                 current_balance=current_balance,
                 current_balance_due_date=current_balance_due_date,
-                profile_name=profile_name,
+                profile_id=profile_id,
             )
         )
 
@@ -493,10 +493,14 @@ def _resolve_current_balance_due_date(
     return _optional_date_field(item, field_name, path, issues)
 
 
-def _optional_profile_name(item: Mapping[str, Any], path: str, issues: list[ValidationIssue]) -> str | None:
-    if "profile_name" not in item:
-        return "Default profile"
-    return _require_string_field(item, "profile_name", path, issues)
+def _optional_profile_id(item: Mapping[str, Any], path: str, issues: list[ValidationIssue]) -> str | None:
+    if "profile_id" in item:
+        return _require_string_field(item, "profile_id", path, issues)
+    # Legacy calculation payloads identified the implicit profile by name.
+    # Keep that compatibility at this boundary only.
+    if "profile_name" in item:
+        return "profile_1"
+    return "profile_1"
 
 
 def _require_currency_field(

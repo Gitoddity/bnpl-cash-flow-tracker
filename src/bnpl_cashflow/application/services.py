@@ -104,7 +104,7 @@ def _build_credit_card(card_input: CreditCardInput) -> CreditCard:
         payment_due_day=card_input.payment_due_day,
         current_balance=card_input.current_balance,
         current_balance_due_date=card_input.current_balance_due_date,
-        profile_name=card_input.profile_name,
+        profile_id=card_input.profile_id,
     )
 
 

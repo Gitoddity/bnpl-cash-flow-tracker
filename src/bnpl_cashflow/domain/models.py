@@ -65,6 +65,16 @@ def _require_frequency(value: InstallmentFrequency, field_name: str) -> Installm
 
 
 @dataclass(frozen=True, slots=True)
+class Profile:
+    id: str
+    name: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
+        object.__setattr__(self, "name", _require_non_empty_text(self.name, "name"))
+
+
+@dataclass(frozen=True, slots=True)
 class CreditCard:
     id: str
     name: str
@@ -72,12 +82,12 @@ class CreditCard:
     payment_due_day: int
     current_balance: Decimal = Decimal("0.00")
     current_balance_due_date: date | None = None
-    profile_name: str = "Default profile"
+    profile_id: str = "profile_1"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
         object.__setattr__(self, "name", _require_non_empty_text(self.name, "name"))
-        object.__setattr__(self, "profile_name", _require_non_empty_text(self.profile_name, "profile_name"))
+        object.__setattr__(self, "profile_id", _require_non_empty_text(self.profile_id, "profile_id"))
         object.__setattr__(self, "statement_end_day", _require_day_of_month(self.statement_end_day, "statement_end_day"))
         object.__setattr__(self, "payment_due_day", _require_day_of_month(self.payment_due_day, "payment_due_day"))
         object.__setattr__(self, "current_balance", _require_non_negative_decimal(self.current_balance, "current_balance"))

@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import streamlit as st
 
+from bnpl_cashflow.ui.profiles import resolve_active_profile
+
 WELCOME_STEP = 0
 WORKSPACE_STEP = 1
 
 
 def initialize_session_state() -> None:
     st.session_state.setdefault("current_step", WELCOME_STEP)
-    st.session_state.setdefault("workspace_view", "Cards")
+    st.session_state.setdefault("workspace_view", "Profiles")
     st.session_state.setdefault("credit_cards", [])
     st.session_state.setdefault("profiles", [])
+    st.session_state.setdefault("active_profile_id", None)
+    st.session_state.setdefault("next_profile_number", 1)
     st.session_state.setdefault("bnpl_plans", [])
     st.session_state.setdefault("calculation_result", None)
     st.session_state.setdefault("calculation_results_by_profile", {})
@@ -31,12 +35,14 @@ def set_current_step(step: int) -> None:
 def reset_financial_data() -> None:
     st.session_state.credit_cards = []
     st.session_state.profiles = []
+    st.session_state.active_profile_id = None
+    st.session_state.next_profile_number = 1
     st.session_state.bnpl_plans = []
     st.session_state.calculation_result = None
     st.session_state.calculation_results_by_profile = {}
     st.session_state.next_card_number = 1
     st.session_state.next_plan_number = 1
-    st.session_state.workspace_view = "Cards"
+    st.session_state.workspace_view = "Profiles"
     mark_data_changed()
 
 
@@ -51,10 +57,12 @@ def mark_data_changed() -> None:
     st.session_state.review_editor_version = int(st.session_state.get("review_editor_version", 1)) + 1
 
 
-def replace_financial_data(credit_cards: list[dict], bnpl_plans: list[dict]) -> None:
+def replace_financial_data(profiles: list[dict], credit_cards: list[dict], bnpl_plans: list[dict]) -> None:
+    st.session_state.profiles = profiles
     st.session_state.credit_cards = credit_cards
     st.session_state.bnpl_plans = bnpl_plans
-    st.session_state.profiles = list(dict.fromkeys(card.get("profile_name", "Default profile") for card in credit_cards))
+    st.session_state.active_profile_id = resolve_active_profile(profiles, st.session_state.active_profile_id)
+    st.session_state.next_profile_number = _next_id_number(profiles, "profile_")
     st.session_state.next_card_number = _next_id_number(credit_cards, "card_")
     st.session_state.next_plan_number = _next_id_number(bnpl_plans, "plan_")
     st.session_state.workspace_view = "Review & calculate"

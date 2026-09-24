@@ -41,6 +41,7 @@ Purpose:
 Recommended responsibilities:
 
 - Credit card model.
+- Profile model. Profiles own cards by stable ID and may be empty.
 - BNPL plan model.
 - Installment model.
 - Statement cycle model.
@@ -152,3 +153,5 @@ Avoid:
 - No premature optimization.
 - Documentation is the source of truth.
 - Prompt registry is the source of truth for decision history.
+- Profile scope selects cards and their referenced plans before existing application-service calculation. Statement-cycle, due-date, and cash-flow rules remain card-specific.
+- Local drafts persist profiles separately from financial calculation payloads, preserving empty profiles. Legacy drafts using `profile_name` migrate at load time to generated stable profile IDs.

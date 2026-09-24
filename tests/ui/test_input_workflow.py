@@ -48,3 +48,6 @@ def test_user_can_add_card_plan_and_calculate():
 
     assert any("Cash flow obligations — Personal" in item.value for item in at.header)
     assert any("Calculated as of" in item.value for item in at.success)
+    assert len(at.dataframe) == 2
+    assert at.dataframe[0].value.iloc[0]["Card"] == "Tangerine"
+    assert at.dataframe[0].value.iloc[0]["Total due"] > 0

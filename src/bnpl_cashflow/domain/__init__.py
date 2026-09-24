@@ -8,6 +8,7 @@ from bnpl_cashflow.domain.models import (
     DueDate,
     Installment,
     InstallmentProjection,
+    Profile,
     StatementCycle,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "Installment",
     "InstallmentFrequency",
     "InstallmentProjection",
+    "Profile",
     "StatementCycle",
 ]

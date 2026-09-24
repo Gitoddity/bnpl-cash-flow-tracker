@@ -6,6 +6,17 @@ MVP 1 uses a simple conceptual domain model focused on calculation correctness. 
 
 No database schema is required for MVP 1. IDs described here are stable internal application identifiers, not database primary keys.
 
+## Profile
+
+A Profile is a first-class local ownership/context entity with stable `id` and editable `name`.
+
+- A Profile may contain zero cards and zero plans.
+- Profile names are unique within local application state but are never relationship keys.
+- A card references `profile_id`; a plan continues to reference only `credit_card_id`.
+- Renaming preserves IDs, card ownership, plan links, and financial results.
+- Deleting a Profile cascades to its cards and plans. No orphaned card or plan is retained.
+- Profile grouping never calculates statement cycles or due dates. Cards remain financial calculation owners.
+
 ## Credit Card
 
 Represents the card used to pay BNPL installments.
@@ -13,6 +24,7 @@ Represents the card used to pay BNPL installments.
 Fields:
 
 - `id`: Stable internal credit card identifier.
+- `profile_id`: Stable internal identifier of owning Profile.
 - `name`: Human-readable card name.
 - `statement_end_day`: Day of month when the statement closes.
 - `payment_due_day`: Day of month when payment is due.

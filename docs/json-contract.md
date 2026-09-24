@@ -61,6 +61,7 @@ If omitted, the application should use sensible defaults and render the standard
 ```json
 {
   "id": "card_tangerine_mastercard",
+  "profile_id": "profile_1",
   "name": "Tangerine Mastercard",
   "statement_end_day": 17,
   "payment_due_day": 13,
@@ -72,6 +73,7 @@ If omitted, the application should use sensible defaults and render the standard
 ### Fields
 
 - `id`: string, required, stable internal identifier.
+- `profile_id`: string, stable owner identifier. The financial contract carries it because `CreditCard` requires stable profile ownership; financial calculations do not use it. Omitted legacy payloads normalize to `profile_1`.
 - `name`: string, required, human-readable card name.
 - `statement_end_day`: integer, required, 1 to 31.
 - `payment_due_day`: integer, required, 1 to 31.

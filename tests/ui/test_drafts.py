@@ -7,6 +7,7 @@ from bnpl_cashflow.ui.drafts import discard_draft, draft_exists, load_draft, sav
 
 def test_draft_round_trip(tmp_path: Path):
     draft_path = tmp_path / "draft.json"
+    profiles = [{"id": "profile_1", "name": "Personal"}, {"id": "profile_2", "name": "Empty"}]
     cards = [
         {
             "id": "card_1",
@@ -14,6 +15,7 @@ def test_draft_round_trip(tmp_path: Path):
             "current_balance": "102.00",
             "statement_end_day": 13,
             "payment_due_day": 13,
+            "profile_id": "profile_1",
         }
     ]
     plans = [
@@ -33,11 +35,11 @@ def test_draft_round_trip(tmp_path: Path):
         }
     ]
 
-    saved_path = save_draft(cards, plans, draft_path)
+    saved_path = save_draft(profiles, cards, plans, draft_path)
 
     assert saved_path == draft_path
     assert draft_exists(draft_path)
-    assert load_draft(draft_path) == (cards, plans)
+    assert load_draft(draft_path) == (profiles, cards, plans)
 
     discard_draft(draft_path)
     assert not draft_exists(draft_path)
