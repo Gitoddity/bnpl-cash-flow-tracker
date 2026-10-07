@@ -362,3 +362,20 @@ Do not introduce:
 - REST error payloads.
 - API response schemas.
 - Web UI error contracts.
+
+
+## Payment plan providers (September 2026)
+
+`provider_name` accepts `paypal`, `klarna`, `afterpay`, `sezzle`, and `affirm`.
+JSON imports also accept formatted names (for example `PayPal`), normalize them
+into these stable lowercase values, and reject arbitrary provider names.
+Exports of new/imported plans contain stable values. Provider never determines
+frequency: `installment_frequency` remains `BIWEEKLY`. CAD and USD are supported;
+a profile cannot mix currencies, and no conversion is performed.
+
+The React API exposes GET/POST `/api/profiles/{profile_id}/plans` and GET
+`/api/profiles/{profile_id}/export`. POST accepts decimal amounts as strings;
+installment counts may be integers or whole-number strings, validated in Python.
+`paid_installment_count` defaults to 0 and cannot exceed `installment_count`.
+The linked card must belong to the requested profile. The existing version 1
+`bnpl-profile` import endpoint accepts exported documents without modification.

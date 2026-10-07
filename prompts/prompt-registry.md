@@ -504,3 +504,5 @@ Related Documentation:
 Related Prompts:
 
 - Prompt 014 - Existing Credit Card Balance Scope Change Review
+
+- 2026-09-27: [Add Payment Plan](2026-09-27-add-payment-plan.md) ? profile-scoped plan form, persistence, provider contract, and regression checks; see docs/payment-plan-flow.md.

@@ -8,13 +8,14 @@ import { Icon } from './Icon'
 export default function App() {
   const upload = useRef<HTMLInputElement>(null)
   const [route, setRoute] = useState(window.location.hash || '#/')
+  const planReturn = useRef('')
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [profiles, setProfiles] = useState<ProfileSummary[]>([])
   const [selected, setSelected] = useState<ProfileSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [createdNotice, setCreatedNotice] = useState<{ id: string; message: string; card?: boolean } | null>(null)
+  const [createdNotice, setCreatedNotice] = useState<{ id: string; message: string; card?: boolean; plan?: boolean } | null>(null)
 
   async function loadProfiles() {
     setLoading(true); setError('')
@@ -50,11 +51,12 @@ export default function App() {
   }
   const creating = route === '#/profiles/new'
   const editMatch = route.match(/^#\/profiles\/([^/]+)\/cards\/([^/]+)\/edit$/)
-  const activeProfile = profiles.find(profile => ['', '/cards/new', '/plans/new', '/projection'].some(suffix => route === `#/profiles/${encodeURIComponent(profile.id)}${suffix}`) || editMatch?.[1] === encodeURIComponent(profile.id))
+  const activeProfile = profiles.find(profile => ['', '/cards/new', '/plans/new', '/plans', '/projection'].some(suffix => route === `#/profiles/${encodeURIComponent(profile.id)}${suffix}`) || editMatch?.[1] === encodeURIComponent(profile.id))
   const editingCard = editMatch?.[2]
   const addingCard = !!activeProfile && route.endsWith('/cards/new')
-  const workspacePage = editingCard ? 'edit-card' : route.endsWith('/plans/new') ? 'plan' : route.endsWith('/projection') ? 'projection' : addingCard ? 'add-card' : 'cards'
+  const workspacePage = editingCard ? 'edit-card' : route.endsWith('/plans/new') ? 'plan' : route.endsWith('/plans') ? 'plans' : route.endsWith('/projection') ? 'projection' : addingCard ? 'add-card' : 'cards'
   const overviewRoute = activeProfile ? `#/profiles/${encodeURIComponent(activeProfile.id)}` : '#/'
+  function addPlan() { planReturn.current = route.endsWith('/plans') ? `${overviewRoute}/plans` : overviewRoute; navigate(`${overviewRoute}/plans/new`) }
   const landing = route === '#/'
   function accepted(profile: ProfileSummary) {
     setProfiles(current => [...current.filter(item => item.id !== profile.id), profile])
@@ -77,12 +79,13 @@ export default function App() {
 
   return <>
     <header className="topbar"><div className={`topbar-inner${landing ? '' : ' transactional-header'}`}>
-      {!landing && <button className="back-button" onClick={() => navigate(activeProfile && workspacePage !== 'cards' ? overviewRoute : '#/')} disabled={busy || saving}><Icon name="arrow-left" />Back</button>}
+      {!landing && <button className="back-button" onClick={() => navigate(workspacePage === 'plan' ? planReturn.current || `${overviewRoute}/plans` : activeProfile && workspacePage !== 'cards' ? overviewRoute : '#/')} disabled={busy || saving}><Icon name="arrow-left" />Back</button>}
       <div className="identity"><span className="wordmark">{brand.name}</span><span className="tagline">{brand.tagline}</span></div>
       {!landing && <span className="header-balancer" aria-hidden="true" />}
     </div></header>
     {createdNotice && <div className="success-notification">
       <div className="success-message" role="status" aria-atomic="true"><Icon name="success" /><span>{createdNotice.message}</span></div>
+      {createdNotice.plan && <button className="button secondary" onClick={addPlan}>Add Another Plan</button>}
       {createdNotice.card && <button className="button secondary" onClick={() => navigate(`${overviewRoute}/cards/new`)}>Add Another Card</button>}
       <button className="notification-close" aria-label="Dismiss success notification" onClick={() => setCreatedNotice(null)}><Icon name="close" /></button>
     </div>}
@@ -96,7 +99,13 @@ export default function App() {
             setCreatedNotice({ id: activeProfile.id, message: `${card.name} updated successfully.` })
           }}
           onAdd={() => navigate(`${overviewRoute}/cards/new`)} onOverview={() => navigate(overviewRoute)} onBusyChange={setSaving}
-          onPlan={() => navigate(`${overviewRoute}/plans/new`)} onProjection={() => navigate(`${overviewRoute}/projection`)}
+          onPlan={addPlan} onPlans={() => navigate(`${overviewRoute}/plans`)} onPlanCancel={() => navigate(planReturn.current || `${overviewRoute}/plans`)}
+          onPlanSaved={plan => {
+            setProfiles(current => current.map(profile => profile.id === activeProfile.id ? { ...profile, plan_count: profile.plan_count + 1 } : profile))
+            setSelected(current => current?.id === activeProfile.id ? { ...current, plan_count: current.plan_count + 1 } : current)
+            navigate(`${overviewRoute}/plans`)
+            setCreatedNotice({ id: activeProfile.id, message: `${plan.plan_name} added successfully.`, plan: true })
+          }} onProjection={() => navigate(`${overviewRoute}/projection`)}
           onSaved={card => {
             setProfiles(current => current.map(profile => profile.id === activeProfile.id ? { ...profile, card_count: profile.card_count + 1 } : profile))
             setSelected(current => current?.id === activeProfile.id ? { ...current, card_count: current.card_count + 1 } : current)

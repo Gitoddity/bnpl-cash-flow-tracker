@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError, cardsApi, type Card, type CardDraft } from './api'
 import { Icon } from './Icon'
 
-const initialDraft: CardDraft = { name: '', current_balance: '', statement_end_day: '', payment_due_day: '' }
+const initialDraft: CardDraft = { name: '', current_balance: '', upcoming_statement_close_date: '', upcoming_statement_due_date: '' }
 const fields: { key: keyof CardDraft; label: string; placeholder: string; help: string; mode?: 'decimal' | 'numeric' }[] = [
   { key: 'name', label: 'Card Nickname', placeholder: 'e.g., TD Visa, RBC Mastercard', help: 'Used to identify this card and connect payment plans to it.' },
-  { key: 'statement_end_day', label: 'Statement Closing Day', placeholder: 'Day of month, e.g., 18', help: 'Used to determine which statement receives each installment charge.', mode: 'numeric' },
-  { key: 'payment_due_day', label: 'Payment Due Day', placeholder: 'Day of month, e.g., 12', help: 'Used to estimate when the resulting credit card due must be paid.', mode: 'numeric' },
+  { key: 'upcoming_statement_close_date', label: 'Statement Closing Date', placeholder: '', help: 'Enter the closing date from your latest statement, including month and year. Future cycles will be estimated.' },
+  { key: 'upcoming_statement_due_date', label: 'Payment Due Date', placeholder: '', help: 'Enter the payment due date for this same statement. It must be after the closing date.' },
   { key: 'current_balance', label: 'Current Balance', placeholder: '500.00', help: 'The amount already owed on this card. DueMap includes it when projecting your upcoming credit card dues.', mode: 'decimal' },
 ]
 
@@ -15,7 +15,7 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
 }) {
   const [draft, setDraft] = useState<CardDraft>(() => existingCard ? {
     name: existingCard.name, current_balance: existingCard.current_balance,
-    statement_end_day: String(existingCard.statement_end_day), payment_due_day: String(existingCard.payment_due_day),
+    upcoming_statement_close_date: existingCard.upcoming_statement_close_date ?? '', upcoming_statement_due_date: existingCard.upcoming_statement_due_date ?? '',
   } : initialDraft)
   const [errors, setErrors] = useState<Partial<Record<keyof CardDraft, string>>>({})
   const [error, setError] = useState('')
@@ -51,7 +51,7 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
       <label htmlFor={`card-${key}`}>{item.label}{key === 'name' && <span aria-hidden="true"> *</span>}</label>
       <div className={key === 'current_balance' ? 'currency-input' : undefined}>
         {key === 'current_balance' && <span aria-hidden="true">$</span>}
-        <input id={`card-${key}`} name={key} type="text" inputMode={item.mode} autoComplete="off"
+        <input id={`card-${key}`} name={key} type={key.startsWith('upcoming_') ? 'date' : 'text'} inputMode={item.mode} autoComplete="off"
           aria-required={key === 'name' || undefined} placeholder={item.placeholder} value={draft[key]} disabled={saving}
           aria-invalid={!!errors[key]} aria-describedby={`card-${key}-help${errors[key] ? ` card-${key}-error` : ''}`}
           onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} />
@@ -65,10 +65,10 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
       <p>Add the card’s billing schedule so DueMap can place your Klarna, Afterpay, and Sezzle installments into the correct credit card dues.</p></div>
     <aside className="card-privacy"><Icon name="shield" /><div><h2>No card credentials required</h2>
       <p>DueMap does not need your card number, expiry date, CVV, PIN, or online banking login. It cannot access your account or charge your card.</p>
-      <p>Only enter a card nickname, its current balance, and the billing dates shown on your statement.</p></div></aside>
+      <p>Only enter a card nickname, its current balance, and the closing and payment dates for the same latest statement.</p></div></aside>
     <form ref={form} className="card-form" onSubmit={submit} noValidate aria-busy={saving}>
       <fieldset><legend>Card details</legend>{field('name')}</fieldset>
-      <fieldset><legend>Statement &amp; payment cycle</legend><div className="billing-fields">{field('statement_end_day')}{field('payment_due_day')}</div></fieldset>
+      <fieldset><legend>Latest statement</legend><div className="billing-fields">{field('upcoming_statement_close_date')}{field('upcoming_statement_due_date')}</div></fieldset>
       <fieldset><legend>Current balance</legend>{field('current_balance')}</fieldset>
       {error && <div className="error-panel" role="alert">{error}</div>}
       <div className="card-form-actions"><button type="button" className="button secondary" onClick={onCancel} disabled={saving}>Cancel</button>

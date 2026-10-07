@@ -16,8 +16,10 @@ is the visual reference. DueMap is provisional branding configured in one fronte
   and opens the plan form from `394c5bab3c614a038accd189cd42ba9c`. Upcoming dates are
   response-only fields, resolved from one server `as_of_date` per request using the
   existing application-service billing helpers. Closing today and payments due today
-  count as upcoming. The next payment may correspond to the previous statement;
-  it is not necessarily the payment for the next closing date. Existing end-of-month
+  count as upcoming. The overview and plan card summary pair the latest completed
+  statement with its scheduled due date and the upcoming statement with its own
+  due date. Latest means closed before today; these dates do not indicate payment
+  status. The separate next-payment API field remains available for compatibility. Existing end-of-month
   clamping and strict payment-after-close behavior are reused, not copied into React.
   Navigation scrolls to the top so transient save feedback is visible. Plan fields
   use real active-profile cards; unsupported monthly/interest modes are omitted.
@@ -79,7 +81,7 @@ profile names are 1–120 characters and normalized by the shared profile functi
 
 The old draft has multiple profiles, no version marker, and deliberately preserves
 incomplete entries. It is not accepted as a portable profile. No automatic conversion
-is performed. Export will later emit this same contract; it is not implemented now.
+is performed. GET /api/profiles/{profile_id}/export now emits this contract.
 
 ## Verification
 
@@ -87,3 +89,12 @@ Focused API tests cover creation, durable storage, collisions, import contracts,
 financial validation reuse, reference integrity, and request limits. Frontend tests
 cover create/import entry, success, failure, retry, and cancel. Run existing Python
 regressions and the TypeScript production build. Visually review desktop/mobile.
+
+- Card forms accept exact latest-statement closing and payment due dates. These
+  are displayed under Latest statement unchanged. Upcoming statement is the next
+  cycle after the entered close, calculated from the recurring days and marked
+  with an orange Estimated badge. Legacy cards without full dates invite the user
+  to enter their latest statement; they do not present calculated dates as actual.
+  The persisted upcoming_statement_* field names remain for data compatibility.
+
+The Add Payment Plan flow is implemented; see [flow and verification](payment-plan-flow.md).

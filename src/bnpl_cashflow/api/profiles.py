@@ -5,9 +5,10 @@ import re
 import sqlite3
 from dataclasses import asdict, fields
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from pathlib import Path
 from uuid import uuid4
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
@@ -22,6 +23,22 @@ class ProfileIdentity(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     id: str = Field(min_length=1, max_length=128)
     name: str = Field(min_length=1, max_length=120)
+
+
+class PlanCreate(BaseModel):
+    """Transport schema; financial constraints remain in the shared validator."""
+    model_config = ConfigDict(extra="forbid", strict=True)
+    plan_name: str
+    provider_name: Literal["paypal", "klarna", "afterpay", "sezzle", "affirm"]
+    credit_card_id: str
+    purchase_amount: str
+    currency: str
+    purchase_date: str
+    first_installment_date: str
+    installment_count: StrictInt | str
+    paid_installment_count: StrictInt | str = 0
+    installment_frequency: Literal["BIWEEKLY"]
+    amount_paid: str = "0.00"
 
 
 class ProfileDocument(BaseModel):
@@ -88,6 +105,9 @@ def _card_value(card: CreditCardInput) -> dict:
     value = asdict(card)
     if value["current_balance_due_date"] is None:
         del value["current_balance_due_date"]
+    for field in ("upcoming_statement_close_date", "upcoming_statement_due_date"):
+        if value[field] is None:
+            del value[field]
     return json.loads(json.dumps(value, default=_json_value, allow_nan=False))
 
 
@@ -101,6 +121,47 @@ class ProfileStore:
 
     def __init__(self, path: Path):
         self.path = path
+
+    def export(self, profile_id: str) -> dict:
+        connection = self._connect()
+        try:
+            return self._document(connection, profile_id)
+        finally:
+            connection.close()
+
+    def plans(self, profile_id: str) -> list[dict]:
+        return self.export(profile_id)["bnpl_plans"]
+
+    def add_plan(self, profile_id: str, raw: object) -> dict:
+        from bnpl_cashflow.application.services import run_application
+
+        allowed = {field.name for field in fields(BNPLPlanInput)} - {"id"}
+        if not isinstance(raw, dict) or set(raw) - allowed:
+            raise ValueError("Provide only payment plan fields.")
+        plan = {"paid_installment_count": 0, "amount_paid": "0.00", **raw, "id": str(uuid4())}
+        for field in ("installment_count", "paid_installment_count"):
+            value = plan.get(field)
+            if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]{1,10}", value.strip()):
+                plan[field] = int(value)
+        connection = self._connect()
+        try:
+            with connection:
+                connection.execute("BEGIN IMMEDIATE")
+                document = self._document(connection, profile_id)
+                # Validate the candidate at index zero for stable field-error paths.
+                payload = validate_profile_payload({"credit_cards": document["credit_cards"],
+                    "bnpl_plans": [plan, *document["bnpl_plans"]]})
+                try:
+                    run_application(payload)
+                except (ValueError, OverflowError, DecimalException) as exc:
+                    raise InputValidationError([ValidationIssue("bnpl_plans", "The schedule could not be generated. Check the dates, amount, and installment count.")]) from exc
+                saved = json.loads(json.dumps(asdict(payload.bnpl_plans[0]), default=_json_value))
+                document["bnpl_plans"].append(saved)
+                # Only inputs are stored: no stale projection survives a mutation.
+                connection.execute("UPDATE profiles SET document = ? WHERE id = ?", (json.dumps(document), profile_id))
+                return saved
+        finally:
+            connection.close()
 
     def _connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -149,9 +210,10 @@ class ProfileStore:
 
     @staticmethod
     def _card_changes(raw: object) -> dict:
-        allowed = {"name", "current_balance", "statement_end_day", "payment_due_day"}
+        allowed = {"name", "current_balance", "statement_end_day", "payment_due_day",
+                   "upcoming_statement_close_date", "upcoming_statement_due_date"}
         if not isinstance(raw, dict) or set(raw) - allowed:
-            raise ValueError("Provide only nickname, current balance, statement closing day, and payment due day.")
+            raise ValueError("Provide only nickname, current balance, and statement schedule fields.")
         card = dict(raw)
         # Transport conversion only: ranges, balance, and name rules stay in Python's
         # existing financial validator. Never truncate fractional day values.

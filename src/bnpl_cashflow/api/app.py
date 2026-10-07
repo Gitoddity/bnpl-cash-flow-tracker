@@ -4,16 +4,16 @@ import json
 import os
 import sqlite3
 from pathlib import Path
-from datetime import date
+from datetime import date, timedelta
 from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from bnpl_cashflow.api.profiles import CardNotFound, ProfileConflict, ProfileNotFound, ProfileStore, validate_document
+from bnpl_cashflow.api.profiles import CardNotFound, PlanCreate, ProfileConflict, ProfileNotFound, ProfileStore, validate_document
 from bnpl_cashflow.input import InputValidationError
-from bnpl_cashflow.application.services import resolve_upcoming_card_dates
+from bnpl_cashflow.application.services import resolve_upcoming_card_dates, resolve_card_statement_dates
 
 MAX_IMPORT_BYTES = 1024 * 1024
 
@@ -53,7 +53,22 @@ def create_app(database_path: Path | None = None, today_provider: Callable[[], d
         next_close, next_due = resolve_upcoming_card_dates(
             card["statement_end_day"], card["payment_due_day"], as_of_date,
         )
+        latest_close, latest_due, _, upcoming_due = resolve_card_statement_dates(
+            card["statement_end_day"], card["payment_due_day"], as_of_date,
+        )
+        if card.get("upcoming_statement_close_date"):
+            # Keep the original persisted field names compatible with saved cards.
+            # User-entered dates describe the latest statement, not a forecast.
+            latest_close = date.fromisoformat(card["upcoming_statement_close_date"])
+            latest_due = date.fromisoformat(card["upcoming_statement_due_date"])
+            _, _, next_close, upcoming_due = resolve_card_statement_dates(
+                card["statement_end_day"], card["payment_due_day"],
+                latest_close + timedelta(days=1),
+            )
         return {**card, "as_of_date": as_of_date.isoformat(),
+                "latest_statement_close_date": latest_close.isoformat(),
+                "latest_statement_due_date": latest_due.isoformat(),
+                "next_statement_due_date": upcoming_due.isoformat(),
                 "next_statement_close_date": next_close.isoformat(),
                 "next_payment_due_date": next_due.isoformat()}
 
@@ -76,7 +91,7 @@ def create_app(database_path: Path | None = None, today_provider: Callable[[], d
 
     @app.exception_handler(ValidationError)
     async def schema_handler(request: Request, exc: ValidationError):
-        return JSONResponse(status_code=422, content={"detail": "The profile document does not match the version 1 format.",
+        return JSONResponse(status_code=422, content={"detail": "The request does not match the expected format.",
             "issues": [{"path": ".".join(map(str, issue["loc"])), "message": issue["msg"]} for issue in exc.errors()]})
 
     @app.exception_handler(ValueError)
@@ -121,6 +136,19 @@ def create_app(database_path: Path | None = None, today_provider: Callable[[], d
     async def update_card(profile_id: str, card_id: str, request: Request):
         as_of_date = today_provider()
         return card_view(store.update_card(profile_id, card_id, await read_json(request)), as_of_date)
+
+    @app.get("/api/profiles/{profile_id}/plans")
+    def list_plans(profile_id: str):
+        return store.plans(profile_id)
+
+    @app.post("/api/profiles/{profile_id}/plans", status_code=201, openapi_extra={
+        "requestBody": {"required": True, "content": {"application/json": {"schema": PlanCreate.model_json_schema()}}}})
+    async def create_plan(profile_id: str, request: Request):
+        return store.add_plan(profile_id, PlanCreate.model_validate(await read_json(request)).model_dump())
+
+    @app.get("/api/profiles/{profile_id}/export")
+    def export_profile(profile_id: str):
+        return JSONResponse(store.export(profile_id), headers={"Content-Disposition": 'attachment; filename="duemap-profile.json"'})
 
     return app
 

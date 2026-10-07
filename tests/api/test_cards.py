@@ -14,6 +14,51 @@ def draft(**changes):
             "statement_end_day": "18", "payment_due_day": "12", **changes}
 
 
+def test_exact_statement_dates_persist_without_month_rollover(tmp_path):
+    path = tmp_path / 'dates.sqlite3'
+    client = TestClient(create_app(path, today_provider=lambda: date(2026, 9, 27)))
+    profile = client.post('/api/profiles', json={'name': 'Dates'}).json()
+    url = f'/api/profiles/{profile["id"]}/cards'
+    response = client.post(url, json={
+        'name': 'TD', 'current_balance': '3100',
+        'upcoming_statement_close_date': '2026-10-16',
+        'upcoming_statement_due_date': '2026-11-06',
+    })
+    assert response.status_code == 201
+    card = response.json()
+    assert card['statement_end_day'] == 16
+    assert card['payment_due_day'] == 6
+    assert card['latest_statement_close_date'] == '2026-10-16'
+    assert card['latest_statement_due_date'] == '2026-11-06'
+    assert card['next_statement_close_date'] == '2026-11-16'
+    assert card['next_statement_due_date'] == '2026-12-06'
+    later = TestClient(create_app(path, today_provider=lambda: date(2027, 1, 1)))
+    assert later.get(url).json()[0]['latest_statement_due_date'] == '2026-11-06'
+    edited = client.patch(f'{url}/{card["id"]}', json={
+        'upcoming_statement_close_date': '2026-11-17',
+        'upcoming_statement_due_date': '2026-12-08',
+    })
+    assert edited.status_code == 200
+    assert edited.json()['latest_statement_due_date'] == '2026-12-08'
+    assert edited.json()['next_statement_due_date'] == '2027-01-08'
+    assert client.get(url).json()[0]['upcoming_statement_close_date'] == '2026-11-17'
+
+
+@pytest.mark.parametrize('closing,due', [
+    ('2026-02-30', '2026-03-21'), ('', '2026-03-21'),
+    ('2026-10-16', ''), ('2026-10-16', '2026-10-16'),
+    ('2026-10-16', '2026-10-07'),
+])
+def test_invalid_exact_statement_dates_do_not_save(setup, closing, due):
+    client, url, _, _ = setup
+    response = client.post(url, json={
+        'name': 'TD', 'current_balance': '0',
+        'upcoming_statement_close_date': closing, 'upcoming_statement_due_date': due,
+    })
+    assert response.status_code == 422
+    assert client.get(url).json() == []
+
+
 @pytest.fixture
 def setup(tmp_path):
     path = tmp_path / "profiles.sqlite3"
@@ -28,7 +73,7 @@ def test_card_saved_under_active_profile_and_survives_restart(setup):
     response = client.post(url, json=draft())
     assert response.status_code == 201
     card = response.json()
-    assert {key: value for key, value in card.items() if key not in {'as_of_date', 'next_statement_close_date', 'next_payment_due_date'}} == {"id": card["id"], "profile_id": profile_id, "name": "TD Visa",
+    assert {key: value for key, value in card.items() if key not in {'as_of_date', 'next_statement_close_date', 'next_payment_due_date', 'latest_statement_close_date', 'latest_statement_due_date', 'next_statement_due_date'}} == {"id": card["id"], "profile_id": profile_id, "name": "TD Visa",
                     "current_balance": "500.00", "statement_end_day": 18, "payment_due_day": 12}
     assert TestClient(create_app(path)).get(url).json() == [card]
     assert client.get(f'/api/profiles/{other["id"]}/cards').json() == []
@@ -120,3 +165,24 @@ def test_upcoming_dates_use_application_clock_and_survive_reload(tmp_path, as_of
     later = TestClient(create_app(path, today_provider=lambda: date(2029, 1, 1)))
     assert later.get(url).json()[0]['as_of_date'] == '2029-01-01'
     assert later.get(url).json()[0]['id'] == card['id']
+
+
+@pytest.mark.parametrize('as_of,closing,due,expected', [
+    ('2026-09-27', 16, 7, ('2026-09-16', '2026-10-07', '2026-10-16', '2026-11-07')),
+    ('2026-10-16', 16, 7, ('2026-09-16', '2026-10-07', '2026-10-16', '2026-11-07')),
+    ('2026-12-27', 16, 7, ('2026-12-16', '2027-01-07', '2027-01-16', '2027-02-07')),
+    ('2028-02-29', 31, 31, ('2028-01-31', '2028-02-29', '2028-02-29', '2028-03-31')),
+    ('2026-02-28', 31, 31, ('2026-01-31', '2026-02-28', '2026-02-28', '2026-03-31')),
+    ('2026-09-27', 6, 27, ('2026-09-06', '2026-09-27', '2026-10-06', '2026-10-27')),
+])
+def test_statement_pairs_after_save_edit_and_reload(tmp_path, as_of, closing, due, expected):
+    client = TestClient(create_app(tmp_path / 'profiles.sqlite3', today_provider=lambda: date.fromisoformat(as_of)))
+    profile = client.post('/api/profiles', json={'name': 'Personal'}).json()
+    url = f'/api/profiles/{profile["id"]}/cards'
+    card = client.post(url, json=draft(statement_end_day=closing, payment_due_day=due)).json()
+    edited = client.patch(f'{url}/{card["id"]}', json={'name': 'TD'}).json()
+    for result in [card, edited, client.get(url).json()[0]]:
+        assert tuple(result[key] for key in (
+            'latest_statement_close_date', 'latest_statement_due_date',
+            'next_statement_close_date', 'next_statement_due_date',
+        )) == expected

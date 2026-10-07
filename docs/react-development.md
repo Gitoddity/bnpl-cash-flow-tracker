@@ -152,7 +152,7 @@ Short months use the existing application-service clamping behavior.
 4. Refresh or reopen: the cards persist and success does not repeat.
 5. Choose Add Payment Plan beneath the cards (or Payment Plans in the navigation).
    The Stitch-based form lists only this profile's cards; selecting one shows its
-   returned dates. As explicitly chosen for this step, the form does not save yet.
+   stable card identifiers. The form now saves through the profile-scoped plan API.
 6. Cancel returns to the overview. Switch profiles and confirm selector isolation.
 7. An empty profile keeps the first-card action and has no next-step panel. Projection
    navigation currently opens a coming-later message; no financial results are invented.
@@ -160,3 +160,5 @@ Short months use the existing application-service clamping behavior.
 The overview uses a 280px desktop sidebar, responsive saved-card grid, horizontal
 mobile navigation, and stacked mobile next-step/actions. Visual browser verification
 still requires a connected browser; automated tests cover behavior, not rendered layout.
+
+See [Payment plan flow](payment-plan-flow.md) for the complete implementation and local verification checklist.

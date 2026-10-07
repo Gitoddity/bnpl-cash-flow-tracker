@@ -2,18 +2,20 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
-import { ApiError, cardsApi, profilesApi, type Card } from './api'
+import { ApiError, cardsApi, plansApi, profilesApi, type Card } from './api'
 
 vi.mock('./api', async importOriginal => ({ ...await importOriginal<typeof import('./api')>(),
-  profilesApi: { list: vi.fn(), create: vi.fn(), import: vi.fn() }, cardsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
+  plansApi: { list: vi.fn(), create: vi.fn() }, profilesApi: { list: vi.fn(), create: vi.fn(), import: vi.fn() }, cardsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
 }))
 const profile = { id: 'personal', name: 'Personal', card_count: 0, plan_count: 0 }
 const card: Card = { id: 'c1', profile_id: 'personal', name: 'TD Visa', current_balance: '500.00', statement_end_day: 18, payment_due_day: 12,
-  as_of_date: '2026-09-24', next_statement_close_date: '2026-10-18', next_payment_due_date: '2026-10-12' }
+  as_of_date: '2026-09-24', next_statement_close_date: '2026-10-18', next_payment_due_date: '2026-10-12',
+  latest_statement_close_date: '2026-09-18', latest_statement_due_date: '2026-10-12', next_statement_due_date: '2026-11-12', upcoming_statement_close_date: '2026-09-18', upcoming_statement_due_date: '2026-10-12' }
 beforeEach(() => {
   window.history.replaceState(null, '', '/#/profiles/personal')
   vi.resetAllMocks()
   vi.mocked(profilesApi.list).mockResolvedValue([profile])
+  vi.mocked(plansApi.list).mockResolvedValue([])
   vi.mocked(cardsApi.list).mockResolvedValue([])
   vi.mocked(cardsApi.create).mockResolvedValue(card)
 })
@@ -26,8 +28,8 @@ async function openForm() {
 async function fillForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/Card Nickname/), 'TD Visa')
   await user.type(screen.getByLabelText('Current Balance'), '500.00')
-  await user.type(screen.getByLabelText('Statement Closing Day'), '18')
-  await user.type(screen.getByLabelText('Payment Due Day'), '12')
+  fireEvent.change(screen.getByLabelText('Statement Closing Date'), { target: { value: '2026-10-18' } })
+  fireEvent.change(screen.getByLabelText('Payment Due Date'), { target: { value: '2026-11-12' } })
 }
 
 test('opens a four-field credential-free form; cancel preserves the active profile without saving', async () => {
@@ -35,8 +37,8 @@ test('opens a four-field credential-free form; cancel preserves the active profi
   const user = await openForm()
   expect(window.location.hash).toBe('#/profiles/personal/cards/new')
   expect(screen.getByText('No card credentials required')).toBeInTheDocument()
-  expect(screen.getAllByRole('textbox')).toHaveLength(4)
-  expect(screen.getAllByRole('textbox').map(input => input.getAttribute('name'))).toEqual(['name', 'statement_end_day', 'payment_due_day', 'current_balance'])
+  expect(screen.getAllByRole('textbox')).toHaveLength(2)
+  expect(screen.getAllByRole('textbox').map(input => input.getAttribute('name'))).toEqual(['name', 'current_balance'])
   await fillForm(user)
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   expect(window.location.hash).toBe('#/profiles/personal')
@@ -53,9 +55,14 @@ test('saves under the active profile, shows returned data and success, and adds 
   const user = await openForm()
   await fillForm(user)
   await user.click(screen.getByRole('button', { name: 'Save Card' }))
-  expect(cardsApi.create).toHaveBeenCalledWith('personal', { name: 'TD Visa', current_balance: '500.00', statement_end_day: '18', payment_due_day: '12' })
+  expect(cardsApi.create).toHaveBeenCalledWith('personal', { name: 'TD Visa', current_balance: '500.00', upcoming_statement_close_date: '2026-10-18', upcoming_statement_due_date: '2026-11-12' })
   const tile = await screen.findByRole('article', { name: 'TD Visa' })
   expect(within(tile).getByText('$500.00')).toBeInTheDocument()
+  expect(within(tile).getByText(/Latest statement/)).toBeInTheDocument()
+  expect(within(tile).getByText('September 18, 2026')).toBeInTheDocument()
+  expect(within(tile).getByText(/Upcoming statement/)).toHaveTextContent('Estimated')
+  expect(within(tile).getByText(/Latest statement/)).not.toHaveTextContent('Estimated')
+  expect(within(tile).getByText('November 12, 2026')).toBeInTheDocument()
   expect(within(tile).getByText('October 18, 2026')).toBeInTheDocument()
   expect(within(tile).getByText('October 12, 2026')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Active Cards' })).toBeInTheDocument()
@@ -81,13 +88,13 @@ test('maps backend field errors, retains all entered text, and surfaces unmapped
   vi.mocked(cardsApi.create).mockRejectedValueOnce(new ApiError('Invalid', [
     { path: 'credit_cards[0].name', message: 'must not be empty' },
     { path: 'credit_cards[0].current_balance', message: 'must be a decimal string' },
-    { path: 'credit_cards[0].statement_end_day', message: 'must be between 1 and 31' },
-    { path: 'credit_cards[0].payment_due_day', message: 'must be between 1 and 31' },
+    { path: 'credit_cards[0].upcoming_statement_close_date', message: 'must be after the statement closing date' },
+    { path: 'credit_cards[0].upcoming_statement_due_date', message: 'must be after the statement closing date' },
     { path: '$', message: 'Please review this card.' },
   ])).mockRejectedValueOnce(new Error('Local storage unavailable.'))
   render(<App />)
   const user = await openForm()
-  const values = ['   ', '32', '0', 'invalid']
+  const values = ['   ', 'invalid']
   for (const [index, input] of screen.getAllByRole('textbox').entries()) await user.type(input, values[index])
   await user.click(screen.getByRole('button', { name: 'Save Card' }))
   expect(await screen.findByText('Please review this card.')).toBeInTheDocument()
@@ -166,20 +173,20 @@ test('payment-plan entry shows only active-profile cards, including a just-saved
   await user.click(screen.getByRole('button', { name: 'Save Card' }))
   expect(await screen.findByText('Done adding your cards?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Add Payment Plan' }))
-  expect(screen.getByRole('heading', { name: 'Add Payment Plan' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Add a Payment Plan' })).toBeInTheDocument()
   expect(window.location.hash).toBe('#/profiles/personal/plans/new')
-  const selector = screen.getByLabelText('Credit Card')
+  const selector = screen.getByLabelText(/Credit Card/)
   expect(within(selector).getAllByRole('option').map(option => option.textContent)).toEqual(['Select a credit card', 'TD Visa'])
   await user.selectOptions(selector, 'c1')
-  expect(screen.getByText('October 12, 2026')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Add Payment Plan' })).toBeDisabled()
+  expect(selector).toHaveValue('c1')
+  expect(screen.getByRole('button', { name: 'Save Payment Plan' })).toBeEnabled()
   expect(screen.queryByText(/added successfully/)).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
   expect(screen.getByRole('heading', { name: 'Active Cards' })).toBeInTheDocument()
   const travelCard = { ...card, id: 'c2', profile_id: 'travel', name: 'Travel Card' }
   vi.mocked(cardsApi.list).mockResolvedValue([travelCard])
   act(() => { window.location.hash = '#/profiles/travel/plans/new'; window.dispatchEvent(new HashChangeEvent('hashchange')) })
-  const travelSelector = await screen.findByLabelText('Credit Card')
+  const travelSelector = await screen.findByLabelText(/Credit Card/)
   expect(within(travelSelector).getAllByRole('option').map(option => option.textContent)).toEqual(['Select a credit card', 'Travel Card'])
   expect(cardsApi.list).toHaveBeenLastCalledWith('travel')
 })
@@ -190,21 +197,23 @@ test('empty profiles retain first-card action and have no payment-plan next-step
   expect(screen.queryByText('Done adding your cards?')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Add Payment Plan' })).not.toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Payment Plans' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Add Payment Plan' }))
+  expect(screen.getByRole('heading', { name: 'Add a credit card first' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Add Credit Card' })).toBeInTheDocument()
 })
 
 test('pencil prefills card, cancel discards changes, and successful edit replaces the card', async () => {
   vi.mocked(cardsApi.list).mockResolvedValue([card])
-  const revised = { ...card, name: 'Corrected Card', current_balance: '125.50', next_payment_due_date: '2026-10-20', payment_due_day: 20 }
-  vi.mocked(cardsApi.update).mockRejectedValueOnce(new ApiError('Invalid', [{ path: 'credit_cards[0].payment_due_day', message: 'must be between 1 and 31' }])).mockResolvedValue(revised)
+  const revised = { ...card, name: 'Corrected Card', current_balance: '125.50', next_payment_due_date: '2026-10-20', latest_statement_due_date: '2026-09-20', next_statement_due_date: '2026-10-20', payment_due_day: 20 }
+  vi.mocked(cardsApi.update).mockRejectedValueOnce(new ApiError('Invalid', [{ path: 'credit_cards[0].upcoming_statement_due_date', message: 'must be after the statement closing date' }])).mockResolvedValue(revised)
   const user = userEvent.setup()
   const view = render(<App />)
   await user.click(await screen.findByRole('button', { name: 'Edit TD Visa' }))
   expect(screen.getByRole('heading', { name: 'Edit Credit Card' })).toBeInTheDocument()
   expect(screen.getByLabelText(/Card Nickname/)).toHaveValue('TD Visa')
   expect(screen.getByLabelText('Current Balance')).toHaveValue('500.00')
-  expect(screen.getByLabelText('Statement Closing Day')).toHaveValue('18')
-  expect(screen.getByLabelText('Payment Due Day')).toHaveValue('12')
+  expect(screen.getByLabelText('Statement Closing Date')).toHaveValue('2026-09-18')
+  expect(screen.getByLabelText('Payment Due Date')).toHaveValue('2026-10-12')
   await user.clear(screen.getByLabelText(/Card Nickname/))
   await user.type(screen.getByLabelText(/Card Nickname/), 'Discard me')
   await user.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -213,17 +222,17 @@ test('pencil prefills card, cancel discards changes, and successful edit replace
   expect(screen.getByLabelText(/Card Nickname/)).toHaveValue('TD Visa')
   await user.clear(screen.getByLabelText(/Card Nickname/))
   await user.type(screen.getByLabelText(/Card Nickname/), 'Corrected Card')
-  await user.clear(screen.getByLabelText('Payment Due Day'))
-  await user.type(screen.getByLabelText('Payment Due Day'), '32')
+  await user.clear(screen.getByLabelText('Payment Due Date'))
+  fireEvent.change(screen.getByLabelText('Payment Due Date'), { target: { value: '2026-10-01' } })
   await user.click(screen.getByRole('button', { name: 'Save Changes' }))
-  expect(await screen.findByRole('alert')).toHaveTextContent('must be between 1 and 31')
+  expect(await screen.findByRole('alert')).toHaveTextContent('must be after the statement closing date')
   expect(screen.getByLabelText(/Card Nickname/)).toHaveValue('Corrected Card')
-  await user.clear(screen.getByLabelText('Payment Due Day'))
-  await user.type(screen.getByLabelText('Payment Due Day'), '20')
+  await user.clear(screen.getByLabelText('Payment Due Date'))
+  fireEvent.change(screen.getByLabelText('Payment Due Date'), { target: { value: '2026-10-20' } })
   await user.clear(screen.getByLabelText('Current Balance'))
   await user.type(screen.getByLabelText('Current Balance'), '125.50')
   await user.click(screen.getByRole('button', { name: 'Save Changes' }))
-  expect(cardsApi.update).toHaveBeenLastCalledWith('personal', 'c1', { name: 'Corrected Card', current_balance: '125.50', statement_end_day: '18', payment_due_day: '20' })
+  expect(cardsApi.update).toHaveBeenLastCalledWith('personal', 'c1', { name: 'Corrected Card', current_balance: '125.50', upcoming_statement_close_date: '2026-09-18', upcoming_statement_due_date: '2026-10-20' })
   expect(await screen.findByRole('article', { name: 'Corrected Card' })).toHaveTextContent('October 20, 2026')
   expect(screen.getAllByRole('article')).toHaveLength(1)
   expect(screen.getByRole('status')).toHaveTextContent('Corrected Card updated successfully.')

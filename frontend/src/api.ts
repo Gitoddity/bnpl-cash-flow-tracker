@@ -17,9 +17,11 @@ export type Card = {
   id: string; profile_id: string; name: string; current_balance: string
   statement_end_day: number; payment_due_day: number
   as_of_date: string; next_statement_close_date: string; next_payment_due_date: string
+  upcoming_statement_close_date?: string; upcoming_statement_due_date?: string
+  latest_statement_close_date: string; latest_statement_due_date: string; next_statement_due_date: string
 }
 export type CardDraft = {
-  name: string; current_balance: string; statement_end_day: string; payment_due_day: string
+  name: string; current_balance: string; upcoming_statement_close_date: string; upcoming_statement_due_date: string
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -55,5 +57,20 @@ export const cardsApi = {
   list: (profileId: string) => request<Card[]>(`/profiles/${encodeURIComponent(profileId)}/cards`),
   create: (profileId: string, card: CardDraft) => request<Card>(`/profiles/${encodeURIComponent(profileId)}/cards`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(card),
+  }),
+}
+
+export const providerNames = { paypal: 'PayPal', klarna: 'Klarna', afterpay: 'Afterpay', sezzle: 'Sezzle', affirm: 'Affirm' } as const
+export type PlanDraft = {
+  plan_name: string; provider_name: string; credit_card_id: string; purchase_amount: string; currency: string
+  purchase_date: string; first_installment_date: string; installment_count: string; paid_installment_count: string
+}
+export type PaymentPlan = Omit<PlanDraft, 'installment_count' | 'paid_installment_count'> & {
+  id: string; installment_count: number; paid_installment_count: number; installment_frequency: 'BIWEEKLY'; amount_paid: string
+}
+export const plansApi = {
+  list: (profileId: string) => request<PaymentPlan[]>(`/profiles/${encodeURIComponent(profileId)}/plans`),
+  create: (profileId: string, draft: PlanDraft) => request<PaymentPlan>(`/profiles/${encodeURIComponent(profileId)}/plans`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...draft, installment_frequency: 'BIWEEKLY' }),
   }),
 }

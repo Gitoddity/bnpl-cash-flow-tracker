@@ -8,6 +8,7 @@ from typing import Any
 
 
 SUPPORTED_CURRENCIES = {"CAD", "USD"}
+SUPPORTED_PROVIDERS = {"paypal", "klarna", "afterpay", "sezzle", "affirm"}
 SUPPORTED_INSTALLMENT_FREQUENCIES = {"BIWEEKLY"}
 
 
@@ -45,6 +46,8 @@ class CreditCardInput:
     current_balance: Decimal = Decimal("0.00")
     current_balance_due_date: date | None = None
     profile_id: str = "profile_1"
+    upcoming_statement_close_date: date | None = None
+    upcoming_statement_due_date: date | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +147,14 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue], *, allow_e
 
         card_id = _require_string_field(item, "id", path, issues)
         name = _require_string_field(item, "name", path, issues)
+        exact_close = exact_due = None
+        if "upcoming_statement_close_date" in item or "upcoming_statement_due_date" in item:
+            exact_close = _require_date_field(item, "upcoming_statement_close_date", path, issues)
+            exact_due = _require_date_field(item, "upcoming_statement_due_date", path, issues)
+            if exact_close and exact_due:
+                if exact_due <= exact_close:
+                    issues.append(ValidationIssue(f"{path}.upcoming_statement_due_date", "must be after the statement closing date"))
+                item = {**item, "statement_end_day": exact_close.day, "payment_due_day": exact_due.day}
         statement_end_day = _require_day_of_month(item, "statement_end_day", path, issues)
         payment_due_day = _require_day_of_month(item, "payment_due_day", path, issues)
         current_balance = _resolve_current_balance(item, path, issues)
@@ -186,6 +197,8 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue], *, allow_e
                 current_balance=current_balance,
                 current_balance_due_date=current_balance_due_date,
                 profile_id=profile_id,
+                upcoming_statement_close_date=exact_close,
+                upcoming_statement_due_date=exact_due,
             )
         )
 
@@ -210,6 +223,11 @@ def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue], *, allow_emp
 
         plan_id = _require_string_field(item, "id", path, issues)
         provider_name = _require_string_field(item, "provider_name", path, issues)
+        if provider_name is not None:
+            provider_name = provider_name.lower()
+            if provider_name not in SUPPORTED_PROVIDERS:
+                issues.append(ValidationIssue(f"{path}.provider_name", "Select PayPal, Klarna, Afterpay, Sezzle, or Affirm."))
+                provider_name = None
         plan_name = _require_string_field(item, "plan_name", path, issues)
         purchase_amount = _require_decimal_field(item, "purchase_amount", path, issues)
         currency = _require_currency_field(item, "currency", path, issues)

@@ -96,6 +96,20 @@ def run_application(payload: ValidatedPayload) -> ApplicationResult:
     return ApplicationService().run(payload)
 
 
+def resolve_card_statement_dates(
+    statement_end_day: int, payment_due_day: int, as_of_date: date,
+) -> tuple[date, date, date, date]:
+    """Pair the latest completed and upcoming closes with their scheduled dues.
+
+    A statement closing today is upcoming until that calendar day has passed.
+    Scheduled dues do not indicate whether a statement has been paid.
+    """
+    upcoming_close = _statement_end_on_or_after(as_of_date, statement_end_day)
+    latest_close = _statement_end_before(upcoming_close, statement_end_day)
+    return (latest_close, _payment_due_after(latest_close, payment_due_day),
+            upcoming_close, _payment_due_after(upcoming_close, payment_due_day))
+
+
 def resolve_upcoming_card_dates(
     statement_end_day: int, payment_due_day: int, as_of_date: date,
 ) -> tuple[date, date]:

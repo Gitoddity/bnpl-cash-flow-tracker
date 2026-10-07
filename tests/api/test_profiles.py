@@ -19,7 +19,7 @@ def document():
         "profile": {"id": "personal", "name": "Personal"},
         "credit_cards": [{"id": "card1", "name": "Card", "profile_id": "personal",
                           "statement_end_day": 13, "payment_due_day": 13, "current_balance": "10.00"}],
-        "bnpl_plans": [{"id": "plan1", "plan_name": "Purchase", "provider_name": "Provider",
+        "bnpl_plans": [{"id": "plan1", "plan_name": "Purchase", "provider_name": "PayPal",
                         "purchase_amount": "120.00", "currency": "CAD", "purchase_date": "2026-09-01",
                         "first_installment_date": "2026-09-01", "installment_count": 4,
                         "installment_frequency": "BIWEEKLY", "credit_card_id": "card1"}],

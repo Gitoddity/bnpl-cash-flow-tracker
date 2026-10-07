@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest'
-import { ApiError, cardsApi, profilesApi } from './api'
+import { ApiError, cardsApi, plansApi, profilesApi } from './api'
 
 test('import sends original file bytes to the validated API endpoint', async () => {
   const profile = { id: 'p', name: 'Personal', card_count: 0, plan_count: 0 }
@@ -23,9 +23,19 @@ test('backend field errors and network failures become readable errors', async (
 test('card API preserves decimal text, scopes requests, and retains structured validation issues', async () => {
   const issues = [{ path: 'credit_cards[0].current_balance', message: 'must not be negative' }]
   const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ issues }), { status: 422 }))
-  const draft = { name: 'Card', current_balance: '-0.01', statement_end_day: '18', payment_due_day: '12' }
+  const draft = { name: 'Card', current_balance: '-0.01', upcoming_statement_close_date: '2026-10-18', upcoming_statement_due_date: '2026-11-12' }
   await expect(cardsApi.create('profile one', draft)).rejects.toMatchObject({ issues, constructor: ApiError })
   expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%20one/cards', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
+  })
+})
+
+
+test('plan request uses stable provider/card IDs and sends unchanged decimal text with biweekly frequency', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 201 }))
+  const draft = { plan_name: 'Laptop', provider_name: 'paypal', credit_card_id: 'stable-card', purchase_amount: '100.01', currency: 'CAD', purchase_date: '2026-09-01', first_installment_date: '2026-09-02', installment_count: '4', paid_installment_count: '1' }
+  await plansApi.create('profile one', draft)
+  expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%20one/plans', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...draft, installment_frequency: 'BIWEEKLY' }),
   })
 })
