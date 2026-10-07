@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ApiError, plansApi, providerNames, type Card, type PaymentPlan, type PlanDraft } from './api'
+import { ApiError, plansApi, type Card, type PaymentPlan, type PlanDraft } from './api'
 import { Icon } from './Icon'
+import { PlanIcon, planIconNames, planColors } from './PlanIcon'
+import { ProviderSelect } from './ProviderSelect'
 
 const empty: PlanDraft = { plan_name: '', provider_name: '', credit_card_id: '', purchase_amount: '', currency: 'CAD', purchase_date: '', first_installment_date: '', installment_count: '', paid_installment_count: '0' }
 const fields: { key: keyof PlanDraft; label: string; help: string; type?: string; placeholder?: string }[] = [
@@ -8,7 +10,7 @@ const fields: { key: keyof PlanDraft; label: string; help: string; type?: string
   { key: 'provider_name', label: 'Payment Plan Provider', help: '' },
   { key: 'credit_card_id', label: 'Credit Card', help: 'Select the credit card that receives the installment charges.' },
   { key: 'purchase_amount', label: 'Purchase Amount', help: 'The total amount financed through this payment plan.' },
-  { key: 'currency', label: 'Currency', help: 'No currency conversion. All plans in a profile must use the same currency.' },
+  { key: 'currency', label: 'Currency', help: 'CAD and USD totals are shown separately. No currency conversion.' },
   { key: 'purchase_date', label: 'Purchase Date', type: 'date', help: 'The date the purchase was made.' },
   { key: 'first_installment_date', label: 'First Installment Date', type: 'date', help: 'The date the first installment was or will be charged.' },
   { key: 'installment_count', label: 'Total Installments', help: 'The total number of payments in the plan.' },
@@ -19,7 +21,9 @@ export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, on
   profileId: string; cards: Card[]; onCancel: () => void; onAddCard: () => void; onSaved: (plan: PaymentPlan) => void
   onBusyChange: (busy: boolean) => void; initialValues?: PlanDraft; submitAction?: (draft: PlanDraft) => Promise<PaymentPlan>; submitLabel?: string; title?: string
 }) {
-  const [draft, setDraft] = useState<PlanDraft>(() => ({ ...empty, ...initialValues }))
+  const [draft, setDraft] = useState<PlanDraft>(() => ({ ...Object.fromEntries(
+    Object.entries(empty).map(([key, value]) => [key, initialValues?.[key as keyof PlanDraft] ?? value]),
+  ), ...(initialValues?.icon ? { icon: initialValues.icon } : {}), ...(initialValues?.icon_color ? { icon_color: initialValues.icon_color } : {}) }) as PlanDraft)
   const [errors, setErrors] = useState<Partial<Record<keyof PlanDraft, string>>>({})
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -53,7 +57,7 @@ export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, on
       'aria-invalid': !!errors[key], 'aria-describedby': `plan-${key}-help${errors[key] ? ` plan-${key}-error` : ''}`,
       onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setDraft(current => ({ ...current, [key]: event.target.value })) }
     return <div className="card-field" key={key}><label htmlFor={props.id}>{item.label}<span aria-hidden="true"> *</span></label>
-      {key === 'provider_name' ? <select {...props}><option value="" disabled>Select a provider</option>{Object.entries(providerNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+      {key === 'provider_name' ? <ProviderSelect id={props.id} value={draft.provider_name} disabled={saving} invalid={!!errors[key]} describedBy={props['aria-describedby']} onChange={provider => setDraft(current => ({ ...current, provider_name: provider }))} />
       : key === 'credit_card_id' ? <select {...props}><option value="" disabled>Select a credit card</option>{activeCards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}</select>
       : key === 'currency' ? <select {...props}><option>CAD</option><option>USD</option></select>
       : <input {...props} type={item.type || 'text'} inputMode={key === 'purchase_amount' ? 'decimal' : key.endsWith('_count') ? 'numeric' : undefined} placeholder={item.placeholder} autoComplete="off" />}
@@ -66,12 +70,17 @@ export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, on
     {!activeCards.length ? <div className="plan-section no-cards-guidance"><h2>Add a credit card first</h2><p>Each payment plan must be connected to the credit card receiving its installment charges.</p><button className="button primary" onClick={onAddCard}>Add Credit Card</button><button className="button secondary" onClick={onCancel}>Cancel</button></div> : <>
       <aside className="card-privacy"><Icon name="shield" /><div><h2>No account credentials required</h2><p>Do not enter your payment provider password, credit card number, CVV, PIN, or online banking login. DueMap cannot access your accounts or make payments.</p><p>DueMap only needs the purchase amount, installment schedule, and the card receiving the charges.</p></div></aside>
       <form ref={form} className="payment-plan-form" onSubmit={submit} noValidate aria-busy={saving}>
-        <fieldset className="plan-section"><legend>1. Payment plan details</legend>{field('plan_name')}{field('provider_name')}</fieldset>
+        <fieldset className="plan-section"><legend>1. Payment plan details</legend>
+          <details className="plan-icon-picker"><summary><PlanIcon icon={draft.icon} color={draft.icon_color} /><span><strong>Plan icon</strong><span>Choose an icon and color for this purchase</span></span></summary>
+            <fieldset disabled={saving}><legend>Choose an icon</legend><div className="plan-icon-options">{Object.entries(planIconNames).map(([key, label]) => <button key={key} type="button" aria-label={label} title={label} aria-pressed={(draft.icon || 'shopping') === key} onClick={() => setDraft(current => ({ ...current, icon: key }))}><PlanIcon icon={key} color={draft.icon_color} /></button>)}</div></fieldset>
+            <fieldset disabled={saving}><legend>Choose a color</legend><div className="plan-color-options">{Object.entries(planColors).map(([key, label]) => <button className={`plan-color-${key}`} key={key} type="button" aria-label={`${label} icon color`} title={label} aria-pressed={(draft.icon_color || 'slate') === key} onClick={() => setDraft(current => ({ ...current, icon_color: key }))}><span aria-hidden="true">{(draft.icon_color || 'slate') === key ? '✓' : '●'}</span></button>)}</div></fieldset>
+          </details>
+          {field('plan_name')}{field('provider_name')}</fieldset>
         <fieldset className="plan-section"><legend>2. Pay with</legend>{field('credit_card_id')}</fieldset>
         <fieldset className="plan-section"><legend>3. Amount and schedule</legend><div className="plan-fields">{fields.slice(3).map(item => field(item.key))}</div><p className="plan-frequency">Payment frequency: <strong>Every two weeks</strong></p></fieldset>
         <aside className="plan-explanation"><h2>How your plan becomes a projection</h2><ul><li><strong>Amount and installment count:</strong> calculates each installment.</li><li><strong>First installment date:</strong> builds the installment schedule.</li><li><strong>Linked credit card:</strong> maps installments to the correct statement and due date.</li><li><strong>Paid installments:</strong> removes payments that have already occurred.</li></ul></aside>
         {error && <div className="error-panel" role="alert" tabIndex={-1} data-form-error>{error}</div>}
-        <div className="card-form-actions"><button type="button" className="button secondary" onClick={onCancel} disabled={saving}>Cancel</button><button type="submit" className="button primary" disabled={saving}>{saving ? 'Saving?' : submitLabel}</button></div>
+        <div className="card-form-actions"><button type="button" className="button secondary" onClick={onCancel} disabled={saving}>Cancel</button><button type="submit" className="button primary" disabled={saving}>{saving ? 'Saving…' : submitLabel}</button></div>
       </form>
     </>}
   </section>

@@ -1,5 +1,12 @@
 import { expect, test, vi } from 'vitest'
-import { ApiError, cardsApi, plansApi, profilesApi } from './api'
+import { ApiError, cardsApi, plansApi, profilesApi, projectionApi } from './api'
+
+test('missing projection route explains an outdated API without hiding a missing profile', async () => {
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'Not Found' }), { status: 404 }))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'This profile no longer exists.' }), { status: 404 }))
+  await expect(projectionApi.get('p')).rejects.toThrow('Restart the DueMap API')
+  await expect(projectionApi.get('missing')).rejects.toThrow('This profile no longer exists.')
+})
 
 test('import sends original file bytes to the validated API endpoint', async () => {
   const profile = { id: 'p', name: 'Personal', card_count: 0, plan_count: 0 }
@@ -38,4 +45,16 @@ test('plan request uses stable provider/card IDs and sends unchanged decimal tex
   expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%20one/plans', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...draft, installment_frequency: 'BIWEEKLY' }),
   })
+})
+
+test('overview, update, delete and export are scoped and encode profile and plan IDs', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'))
+  const draft = { plan_name: 'Laptop', provider_name: 'paypal', credit_card_id: 'c1', purchase_amount: '100.01', currency: 'CAD', purchase_date: '2026-09-01', first_installment_date: '2026-09-02', installment_count: '4', paid_installment_count: '1' }
+  await plansApi.overview('profile/one')
+  expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%2Fone/plans/overview', undefined)
+  await plansApi.update('profile/one', 'plan/one', draft)
+  expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%2Fone/plans/plan%2Fone', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...draft, installment_frequency: 'BIWEEKLY' }) })
+  await plansApi.delete('profile/one', 'plan/one')
+  expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%2Fone/plans/plan%2Fone', { method: 'DELETE' })
+  expect(profilesApi.exportUrl('profile/one')).toBe('/api/profiles/profile%2Fone/export')
 })

@@ -70,7 +70,10 @@ class ApplicationService:
             projections.extend(plan_projections)
 
         bnpl_cash_flow_obligations = tuple(aggregate_cash_flow(installments, due_dates))
-        currency = bnpl_plans[0].currency if bnpl_plans else ""
+        # Cards have no saved currency. A balance-only projection must remain
+        # usable without assigning it an invented currency or an empty value
+        # that CashFlowObligation rejects.
+        currency = bnpl_plans[0].currency if bnpl_plans else "UNSPECIFIED"
         cash_flow_obligations = _include_current_balance_obligations(
             bnpl_cash_flow_obligations,
             credit_cards,

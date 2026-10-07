@@ -13,6 +13,11 @@ npm.cmd ci
 
 ## Start API (terminal 1, repository root)
 
+`Start-DueMap.bat` starts the API with source reload enabled, so Python changes
+are picked up while developing. If a server started by an older launcher is
+already running, restart that DueMap API once. The launcher checks for the
+Projection route and reports an outdated server instead of silently reusing it.
+
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn bnpl_cashflow.api.app:app --reload --host 127.0.0.1 --port 8000
 ```
@@ -162,3 +167,8 @@ mobile navigation, and stacked mobile next-step/actions. Visual browser verifica
 still requires a connected browser; automated tests cover behavior, not rendered layout.
 
 See [Payment plan flow](payment-plan-flow.md) for the complete implementation and local verification checklist.
+
+The Payment Plans overview now uses backend summaries and a responsive table,
+with edit/delete and header export actions. Current behavior and API details are
+documented in [Payment Plans Overview](payment-plans-overview.md); this supersedes
+the earlier slice's notes about plan editing and export being future work.

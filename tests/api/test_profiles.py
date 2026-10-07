@@ -81,7 +81,6 @@ def test_setup_profiles_can_import_without_plans(client, cards):
     lambda d: d.update(credit_cards=[]),
     lambda d: d["bnpl_plans"].append(deepcopy(d["bnpl_plans"][0])),
     lambda d: d["credit_cards"].append(deepcopy(d["credit_cards"][0])),
-    lambda d: d["bnpl_plans"].append({**d["bnpl_plans"][0], "id": "plan2", "currency": "USD"}),
 ])
 def test_invalid_imports_never_write(client, mutation):
     source = document()

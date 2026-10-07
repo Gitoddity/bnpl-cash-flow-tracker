@@ -77,12 +77,12 @@ def validate_payload(payload: Mapping[str, Any]) -> ValidatedPayload:
     return _validate_payload(payload, allow_empty=False)
 
 
-def validate_profile_payload(payload: Mapping[str, Any]) -> ValidatedPayload:
+def validate_profile_payload(payload: Mapping[str, Any], *, allow_mixed_currencies: bool = False) -> ValidatedPayload:
     """Validate portable profile contents, including empty setup-stage profiles."""
-    return _validate_payload(payload, allow_empty=True)
+    return _validate_payload(payload, allow_empty=True, allow_mixed_currencies=allow_mixed_currencies)
 
 
-def _validate_payload(payload: Mapping[str, Any], *, allow_empty: bool) -> ValidatedPayload:
+def _validate_payload(payload: Mapping[str, Any], *, allow_empty: bool, allow_mixed_currencies: bool = False) -> ValidatedPayload:
     if not isinstance(payload, Mapping):
         raise InputValidationError([ValidationIssue(path="$", message="payload must be a mapping", value=payload)])
 
@@ -108,7 +108,8 @@ def _validate_payload(payload: Mapping[str, Any], *, allow_empty: bool) -> Valid
 
     if normalized_bnpl_plans and (normalized_credit_cards or allow_empty):
         _validate_references(normalized_bnpl_plans, normalized_credit_cards, issues)
-        _validate_currency_consistency(normalized_bnpl_plans, issues)
+        if not allow_mixed_currencies:
+            _validate_currency_consistency(normalized_bnpl_plans, issues)
 
     if issues:
         raise InputValidationError(issues)

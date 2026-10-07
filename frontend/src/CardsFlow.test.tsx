@@ -5,7 +5,7 @@ import App from './App'
 import { ApiError, cardsApi, plansApi, profilesApi, type Card } from './api'
 
 vi.mock('./api', async importOriginal => ({ ...await importOriginal<typeof import('./api')>(),
-  plansApi: { list: vi.fn(), create: vi.fn() }, profilesApi: { list: vi.fn(), create: vi.fn(), import: vi.fn() }, cardsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
+  plansApi: { list: vi.fn(), create: vi.fn(), overview: vi.fn() }, profilesApi: { list: vi.fn(), create: vi.fn(), import: vi.fn() }, cardsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
 }))
 const profile = { id: 'personal', name: 'Personal', card_count: 0, plan_count: 0 }
 const card: Card = { id: 'c1', profile_id: 'personal', name: 'TD Visa', current_balance: '500.00', statement_end_day: 18, payment_due_day: 12,
@@ -16,6 +16,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(profilesApi.list).mockResolvedValue([profile])
   vi.mocked(plansApi.list).mockResolvedValue([])
+  vi.mocked(plansApi.overview).mockResolvedValue({ plans: [], summary: { active_plans: 0, remaining_totals: [], next_charge: null } })
   vi.mocked(cardsApi.list).mockResolvedValue([])
   vi.mocked(cardsApi.create).mockResolvedValue(card)
 })

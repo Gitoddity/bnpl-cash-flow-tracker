@@ -370,8 +370,10 @@ Do not introduce:
 JSON imports also accept formatted names (for example `PayPal`), normalize them
 into these stable lowercase values, and reject arbitrary provider names.
 Exports of new/imported plans contain stable values. Provider never determines
-frequency: `installment_frequency` remains `BIWEEKLY`. CAD and USD are supported;
-a profile cannot mix currencies, and no conversion is performed.
+frequency: `installment_frequency` remains `BIWEEKLY`. CAD and USD are supported.
+Version 1 portable profiles may contain both currencies; the overview reports
+separate totals without conversion. Legacy CLI calculation payloads retain the
+single-currency restriction described above.
 
 The React API exposes GET/POST `/api/profiles/{profile_id}/plans` and GET
 `/api/profiles/{profile_id}/export`. POST accepts decimal amounts as strings;
@@ -379,3 +381,18 @@ installment counts may be integers or whole-number strings, validated in Python.
 `paid_installment_count` defaults to 0 and cannot exceed `installment_count`.
 The linked card must belong to the requested profile. The existing version 1
 `bnpl-profile` import endpoint accepts exported documents without modification.
+
+The overview API also exposes GET `/api/profiles/{profile_id}/plans/overview`
+and PATCH/DELETE `/api/profiles/{profile_id}/plans/{plan_id}`. See
+[overview reporting and verification](payment-plans-overview.md) for schemas,
+provider-charge definitions, and profile-isolation behavior. Derived reporting
+fields are not part of the portable version 1 document.
+
+Portable version 1 plans may also carry optional presentation fields `icon` and
+`icon_color`, separate from financial inputs. Supported icons are `shopping`,
+`laptop`, `home`, `plane`, `car`, `gift`, `heart`, `book`, `phone`, `music`, `coffee`,
+and `star`; colors are `slate`, `blue`, `purple`, `pink`, `green`, and `orange`.
+Omitted values display a slate shopping bag. Create/edit/import validate these
+catalog values; export preserves them. Existing documents without these fields
+remain supported and unchanged. Logos are derived from `provider_name`, not saved
+as arbitrary URLs or image uploads.

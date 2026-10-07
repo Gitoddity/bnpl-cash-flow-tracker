@@ -98,3 +98,9 @@ regressions and the TypeScript production build. Visually review desktop/mobile.
   The persisted upcoming_statement_* field names remain for data compatibility.
 
 The Add Payment Plan flow is implemented; see [flow and verification](payment-plan-flow.md).
+
+The Payment Plans overview now includes Python-derived summaries, a compact
+responsive table, editing/deletion, and Export Profile in the workspace header.
+Portable profiles support separate CAD/USD totals without conversion. Earlier
+slice notes about absent plan editing/export are superseded; see
+[Payment Plans Overview](payment-plans-overview.md). Projection remains the next task.

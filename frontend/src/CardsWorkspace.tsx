@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
-import { cardsApi, plansApi, providerNames, type PaymentPlan, type Card, type ProfileSummary } from './api'
+import { cardsApi, plansApi, type PaymentPlan, type Card, type ProfileSummary } from './api'
 import { AddCardScreen } from './AddCardScreen'
 import { ProfileEmptyState } from './ProfileEmptyState'
 import { Icon } from './Icon'
 import { displayDate } from './displayDate'
 import { AddPaymentPlanScreen } from './AddPaymentPlanScreen'
+import { PaymentPlansOverview } from './PaymentPlansOverview'
+import { ProjectionScreen } from './ProjectionScreen'
 
-export function CardsWorkspace({ profile, page, saving, editingCard, onEdit, onUpdated, onAdd, onOverview, onPlan, onPlans, onPlanCancel, onPlanSaved, onProjection, onSaved, onBusyChange }: {
-  profile: ProfileSummary; page: 'cards' | 'add-card' | 'edit-card' | 'plan' | 'plans' | 'projection'; saving: boolean
+export function CardsWorkspace({ profile, profiles, onSwitchProfile, page, saving, editingPlan, onEditPlan, onPlanUpdated, onPlanDeleted, editingCard, onEdit, onUpdated, onAdd, onOverview, onPlan, onPlans, onPlanCancel, onPlanSaved, onProjection, onSaved, onBusyChange, onImport, onManageProfiles, onNewProfile }: {
+  onImport: () => void; onManageProfiles: () => void; onNewProfile: () => void
+  profiles: ProfileSummary[]; onSwitchProfile: (profileId: string) => void
+  profile: ProfileSummary; page: 'cards' | 'add-card' | 'edit-card' | 'plan' | 'edit-plan' | 'plans' | 'projection'; saving: boolean
+  editingPlan?: string; onEditPlan: (plan: PaymentPlan) => void; onPlanUpdated: (plan: PaymentPlan) => void; onPlanDeleted: (plan: PaymentPlan) => void
   onPlans: () => void; onPlanCancel: () => void; onPlanSaved: (plan: PaymentPlan) => void
   editingCard?: string; onEdit: (card: Card) => void; onUpdated: (card: Card) => void
   onAdd: () => void; onOverview: () => void; onPlan: () => void; onProjection: () => void
@@ -27,12 +32,11 @@ export function CardsWorkspace({ profile, page, saving, editingCard, onEdit, onU
     return () => { cancelled = true }
   }, [profile.id, retry])
   useEffect(() => {
-    if (page !== 'plans') return
+    if (page !== 'edit-plan') return
     let cancelled = false
-    setPlanError('')
+    setPlanError(''); setPlans(null)
     plansApi.list(profile.id).then(result => {
-      // Keep a just-saved POST result visible even if a list response is stale.
-      if (!cancelled) setPlans(current => [...result, ...(current || []).filter(plan => !result.some(item => item.id === plan.id))])
+      if (!cancelled) setPlans(result)
     })
       .catch(cause => { if (!cancelled) setPlanError(cause instanceof Error ? cause.message : 'Could not load plans.') })
     return () => { cancelled = true }
@@ -40,16 +44,23 @@ export function CardsWorkspace({ profile, page, saving, editingCard, onEdit, onU
   return <div className="cards-workspace">
     <aside className="workspace-sidebar" aria-label="Active workspace">
       <div className="workspace-profile"><span className="profile-avatar" aria-hidden="true">{profile.name.slice(0, 1).toUpperCase()}</span>
-        <div><strong>{profile.name}</strong><span>Active workspace</span></div></div>
+        <div><label className="sr-only" htmlFor="workspace-profile">Switch active profile</label><select id="workspace-profile" value={profile.id} onChange={event => onSwitchProfile(event.target.value)} disabled={saving}>{profiles.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select><span>Active workspace</span></div></div>
       <nav className="workspace-nav" aria-label="Profile navigation">
         <button onClick={onOverview} disabled={saving} aria-current={['cards', 'add-card', 'edit-card'].includes(page) ? 'page' : undefined}><Icon name="wallet" />Credit Cards</button>
-        <button onClick={onPlans} disabled={saving} aria-current={['plan', 'plans'].includes(page) ? 'page' : undefined}><Icon name="calendar" />Payment Plans</button>
+        <button onClick={onPlans} disabled={saving} aria-current={['plan', 'edit-plan', 'plans'].includes(page) ? 'page' : undefined}><Icon name="calendar" />Payment Plans</button>
         <button onClick={onProjection} disabled={saving} aria-current={page === 'projection' ? 'page' : undefined}><Icon name="projection" />Projection</button>
       </nav>
+      {page === 'projection' && <nav className="workspace-profile-actions" aria-label="Profile actions">
+        <a href={`/api/profiles/${encodeURIComponent(profile.id)}/export`} download="duemap-profile.json">Export Profile</a>
+        <button onClick={onManageProfiles} disabled={saving}>Manage Profiles</button>
+        <button onClick={onImport} disabled={saving}><Icon name="upload" />Import Profile</button>
+        <button onClick={onNewProfile} disabled={saving}><Icon name="plus" />New Profile</button>
+      </nav>}
       <p className="workspace-storage">Saved on this computer by the local server.</p>
     </aside>
     <div className="workspace-content">
-      {error ? <section className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry loading cards</button></section>
+      {page === 'projection' ? <ProjectionScreen key={profile.id} profileId={profile.id} onAddCard={onAdd} onAddPlan={onPlan} />
+      : error ? <section className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry loading cards</button></section>
       : cards === null ? <p role="status">Loading cards…</p>
       : page === 'edit-card' ? cardToEdit ? <AddCardScreen key={cardToEdit.id} profileId={profile.id} existingCard={cardToEdit} onCancel={onOverview} onBusyChange={onBusyChange} onSaved={card => {
         setCards(current => current!.map(item => item.id === card.id ? card : item)); onUpdated(card)
@@ -58,18 +69,18 @@ export function CardsWorkspace({ profile, page, saving, editingCard, onEdit, onU
         // The POST result is authoritative and appears immediately, without a second fetch.
         setCards(current => [...(current || []), card]); onSaved(card)
       }} />
-      : page === 'plan' ? <AddPaymentPlanScreen profileId={profile.id} cards={cards} onCancel={onPlanCancel} onAddCard={onAdd} onBusyChange={onBusyChange} onSaved={plan => {
-        setPlans(current => [...(current || []), plan]); onPlanSaved(plan)
-      }} />
-      : page === 'plans' ? <section className="plans-overview" aria-labelledby="plans-title">
-        <div className="cards-overview-heading"><div className="card-page-heading"><h1 id="plans-title">Payment Plans</h1><p>Your purchases and remaining installment schedules.</p></div><button className="button primary" onClick={onPlan}><Icon name="plus" />Add Payment Plan</button></div>
-        {planError && <div className="error-panel" role="alert">{planError}<button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry loading plans</button></div>}
-        {plans === null ? !planError && <p role="status">Loading payment plans?</p>
-        : plans.length === 0 ? <div className="plan-section"><h2>No payment plans yet</h2><p>Add a purchase to see its installment schedule in DueMap.</p><button className="button primary" onClick={onPlan}>Add your first payment plan</button></div>
-        : <div className="cards-grid">{plans.map(plan => <article className="saved-card" key={plan.id} aria-label={plan.plan_name}><h2>{plan.plan_name}</h2><p>{providerNames[plan.provider_name.toLowerCase() as keyof typeof providerNames] || plan.provider_name} ? {cards.find(card => card.id === plan.credit_card_id)?.name}</p><dl><div className="card-balance"><dt>Purchase amount</dt><dd>{plan.currency} {plan.purchase_amount}</dd></div><div><dt>Installments remaining</dt><dd>{plan.installment_count - plan.paid_installment_count} of {plan.installment_count}</dd></div><div><dt>First installment</dt><dd>{displayDate(plan.first_installment_date)}</dd></div></dl><p>Every two weeks</p></article>)}</div>}
-      </section>
+      : page === 'edit-plan' ? planError ? <div className="error-panel" role="alert">{planError}<button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry</button></div>
+      : plans === null ? <p role="status">Loading payment plan…</p>
+      : (() => {
+        const plan = plans.find(item => encodeURIComponent(item.id) === editingPlan)
+        return plan ? <AddPaymentPlanScreen key={plan.id} profileId={profile.id} cards={cards} title="Edit Payment Plan" submitLabel="Save Changes"
+          initialValues={{ ...plan, installment_count: String(plan.installment_count), paid_installment_count: String(plan.paid_installment_count) }}
+          submitAction={draft => plansApi.update(profile.id, plan.id, draft)} onSaved={onPlanUpdated} onCancel={onPlans} onAddCard={onAdd} onBusyChange={onBusyChange} />
+          : <div className="error-panel" role="alert">This payment plan is unavailable in this profile.<button className="text-button" onClick={onPlans}>Back to Payment Plans</button></div>
+      })()
+      : page === 'plan' ? <AddPaymentPlanScreen key="new-plan" profileId={profile.id} cards={cards} onCancel={onPlanCancel} onAddCard={onAdd} onBusyChange={onBusyChange} onSaved={onPlanSaved} />
+      : page === 'plans' ? <PaymentPlansOverview profileId={profile.id} hasCards={cards.length > 0} onAdd={onPlan} onAddCard={onAdd} onEdit={onEditPlan} onDeleted={onPlanDeleted} onProjection={onProjection} onBusyChange={onBusyChange} />
       : cards.length === 0 ? <div className="empty-cards"><ProfileEmptyState profile={profile} onAdd={onAdd} /></div>
-      : page === 'projection' ? <section className="card-page-heading"><h1>Projection</h1><p>The projection screen is coming later. Your saved cards are ready.</p><button className="button secondary" onClick={onOverview}>Back to Credit Cards</button></section>
       : <section className="cards-overview" aria-labelledby="cards-title">
         <div className="cards-overview-heading"><div className="card-page-heading"><h1 id="cards-title">Active Cards</h1><p>Manage your card statements and upcoming dues.</p></div>
           <button className="button primary" onClick={onAdd}><Icon name="plus" />Add Credit Card</button></div>

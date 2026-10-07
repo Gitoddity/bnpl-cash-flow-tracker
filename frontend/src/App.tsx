@@ -50,11 +50,12 @@ export default function App() {
     if (window.location.hash !== destination) window.history.pushState(null, '', destination)
   }
   const creating = route === '#/profiles/new'
+  const planEditMatch = route.match(/^#\/profiles\/([^/]+)\/plans\/([^/]+)\/edit$/)
   const editMatch = route.match(/^#\/profiles\/([^/]+)\/cards\/([^/]+)\/edit$/)
-  const activeProfile = profiles.find(profile => ['', '/cards/new', '/plans/new', '/plans', '/projection'].some(suffix => route === `#/profiles/${encodeURIComponent(profile.id)}${suffix}`) || editMatch?.[1] === encodeURIComponent(profile.id))
+  const activeProfile = profiles.find(profile => ['', '/cards/new', '/plans/new', '/plans', '/projection'].some(suffix => route === `#/profiles/${encodeURIComponent(profile.id)}${suffix}`) || editMatch?.[1] === encodeURIComponent(profile.id) || planEditMatch?.[1] === encodeURIComponent(profile.id))
   const editingCard = editMatch?.[2]
   const addingCard = !!activeProfile && route.endsWith('/cards/new')
-  const workspacePage = editingCard ? 'edit-card' : route.endsWith('/plans/new') ? 'plan' : route.endsWith('/plans') ? 'plans' : route.endsWith('/projection') ? 'projection' : addingCard ? 'add-card' : 'cards'
+  const workspacePage = planEditMatch ? 'edit-plan' : editingCard ? 'edit-card' : route.endsWith('/plans/new') ? 'plan' : route.endsWith('/plans') ? 'plans' : route.endsWith('/projection') ? 'projection' : addingCard ? 'add-card' : 'cards'
   const overviewRoute = activeProfile ? `#/profiles/${encodeURIComponent(activeProfile.id)}` : '#/'
   function addPlan() { planReturn.current = route.endsWith('/plans') ? `${overviewRoute}/plans` : overviewRoute; navigate(`${overviewRoute}/plans/new`) }
   const landing = route === '#/'
@@ -78,10 +79,10 @@ export default function App() {
   const importAction = () => upload.current?.click()
 
   return <>
-    <header className="topbar"><div className={`topbar-inner${landing ? '' : ' transactional-header'}`}>
+    <header className="topbar"><div className={`topbar-inner${landing ? '' : activeProfile ? ' workspace-header' : ' transactional-header'}`}>
       {!landing && <button className="back-button" onClick={() => navigate(workspacePage === 'plan' ? planReturn.current || `${overviewRoute}/plans` : activeProfile && workspacePage !== 'cards' ? overviewRoute : '#/')} disabled={busy || saving}><Icon name="arrow-left" />Back</button>}
       <div className="identity"><span className="wordmark">{brand.name}</span><span className="tagline">{brand.tagline}</span></div>
-      {!landing && <span className="header-balancer" aria-hidden="true" />}
+      {activeProfile && workspacePage !== 'projection' ? <a className="button secondary export-profile" href={`/api/profiles/${encodeURIComponent(activeProfile.id)}/export`} download="duemap-profile.json">Export Profile</a> : !landing && <span className="header-balancer" aria-hidden="true" />}
     </div></header>
     {createdNotice && <div className="success-notification">
       <div className="success-message" role="status" aria-atomic="true"><Icon name="success" /><span>{createdNotice.message}</span></div>
@@ -91,8 +92,20 @@ export default function App() {
     </div>}
     <input ref={upload} type="file" accept=".json,application/json" aria-label="Import profile JSON file" hidden onChange={importFile} />
     <main className={creating ? 'create-profile-canvas' : activeProfile ? 'cards-canvas' : undefined}>
+      {activeProfile && error && <div className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={importAction} disabled={busy}>Retry Import Profile</button></div>}
       {creating ? <CreateProfileScreen onCreated={created} onImport={importAction} importing={busy} importError={error} onBusyChange={setSaving} />
-      : activeProfile ? <CardsWorkspace key={activeProfile.id} profile={activeProfile} page={workspacePage} saving={saving}
+      : activeProfile ? <CardsWorkspace key={activeProfile.id} profile={activeProfile} profiles={profiles} onSwitchProfile={id => { planReturn.current = ''; navigate(`#/profiles/${encodeURIComponent(id)}${workspacePage === 'plans' ? '/plans' : workspacePage === 'projection' ? '/projection' : ''}`) }} page={workspacePage} saving={saving || busy}
+          onImport={importAction} onManageProfiles={() => navigate('#/')} onNewProfile={() => navigate('#/profiles/new')}
+          editingPlan={planEditMatch?.[2]} onEditPlan={plan => navigate(`${overviewRoute}/plans/${encodeURIComponent(plan.id)}/edit`)}
+          onPlanUpdated={plan => {
+            navigate(`${overviewRoute}/plans`)
+            setCreatedNotice({ id: activeProfile.id, message: `${plan.plan_name} updated successfully.` })
+          }}
+          onPlanDeleted={plan => {
+            setProfiles(current => current.map(profile => profile.id === activeProfile.id ? { ...profile, plan_count: profile.plan_count - 1 } : profile))
+            setSelected(current => current?.id === activeProfile.id ? { ...current, plan_count: current.plan_count - 1 } : current)
+            setCreatedNotice({ id: activeProfile.id, message: `${plan.plan_name} deleted successfully.` })
+          }}
           editingCard={editingCard} onEdit={card => navigate(`${overviewRoute}/cards/${encodeURIComponent(card.id)}/edit`)}
           onUpdated={card => {
             navigate(overviewRoute)
@@ -123,10 +136,10 @@ export default function App() {
         </div>
         <aside className="privacy"><Icon name="shield" /><div>
           <div className="privacy-heading">No Sign-Up Required <span className="badge">Local server</span></div>
-          <p>Profiles are saved on this computer by the local server, not in your browser. Closing this tab won’t delete them. JSON export is coming later.</p>
+          <p>Profiles are saved on this computer by the local server, not in your browser. Closing this tab won’t delete them. Use Export Profile to download a portable backup.</p>
         </div></aside>
         {error && <div className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={() => void loadProfiles()} disabled={busy || loading}>Reload saved profiles</button></div>}
-        {selected && <div className="profile-result" role="status"><strong>{selected.name} is ready.</strong><p>{selected.card_count} cards · {selected.plan_count} payment plans</p><p>Profile saved. Card and payment-plan editing will be available in the next step.</p></div>}
+        {selected && <div className="profile-result" role="status"><strong>{selected.name} is ready.</strong><p>{selected.card_count} cards · {selected.plan_count} payment plans</p><p>Open your profile to manage cards and payment plans.</p></div>}
         {loading && <p role="status" className="small">Loading saved profiles…</p>}
         {profiles.length > 0 && <div className="saved-profiles"><label htmlFor="saved-profile">Saved profiles on this computer</label>
           <select id="saved-profile" value="" onChange={event => {

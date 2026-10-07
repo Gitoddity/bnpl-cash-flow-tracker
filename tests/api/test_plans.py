@@ -62,9 +62,8 @@ def test_profile_isolation_and_currency_consistency(setup):
     assert client.get(other_base + '/plans').json() == []
     assert client.post(base + '/plans', json=draft).status_code == 201
     response = client.post(base + '/plans', json={**draft, 'currency': 'USD'})
-    assert response.status_code == 422
-    assert response.json()['issues'][0]['path'] == 'bnpl_plans'
-    assert len(client.get(base + '/plans').json()) == 1
+    assert response.status_code == 201
+    assert len(client.get(base + '/plans').json()) == 2
 
 def test_paid_all_and_default_paid(setup):
     client, base, draft, _ = setup

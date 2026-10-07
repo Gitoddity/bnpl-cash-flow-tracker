@@ -7,13 +7,16 @@ from pathlib import Path
 from datetime import date, timedelta
 from typing import Callable
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from bnpl_cashflow.api.profiles import CardNotFound, PlanCreate, ProfileConflict, ProfileNotFound, ProfileStore, validate_document
 from bnpl_cashflow.input import InputValidationError
 from bnpl_cashflow.application.services import resolve_upcoming_card_dates, resolve_card_statement_dates
+from bnpl_cashflow.application.plan_overview import build_plan_overview
+from bnpl_cashflow.application.projection_view import build_projection
+from bnpl_cashflow.api.profiles import PlanNotFound
 
 MAX_IMPORT_BYTES = 1024 * 1024
 
@@ -106,6 +109,10 @@ def create_app(database_path: Path | None = None, today_provider: Callable[[], d
     def health():
         return {"status": "ok"}
 
+    @app.exception_handler(PlanNotFound)
+    async def missing_plan_handler(request: Request, exc: PlanNotFound):
+        return JSONResponse(status_code=404, content={"detail": "This payment plan is unavailable in this profile."})
+
     @app.get("/api/profiles")
     def profiles():
         return store.list()
@@ -140,6 +147,25 @@ def create_app(database_path: Path | None = None, today_provider: Callable[[], d
     @app.get("/api/profiles/{profile_id}/plans")
     def list_plans(profile_id: str):
         return store.plans(profile_id)
+
+    @app.get("/api/profiles/{profile_id}/plans/overview")
+    def plan_overview(profile_id: str):
+        return build_plan_overview(store.export(profile_id))
+
+    @app.get("/api/profiles/{profile_id}/projection")
+    def projection(profile_id: str, start: date | None = None,
+                   months: int = Query(default=6, ge=1, le=24),
+                   card_id: str | None = None, currency: str | None = None):
+        return build_projection(store.export(profile_id), today_provider(), start, months, card_id, currency)
+
+    @app.patch("/api/profiles/{profile_id}/plans/{plan_id}")
+    async def update_plan(profile_id: str, plan_id: str, request: Request):
+        return store.update_plan(profile_id, plan_id, PlanCreate.model_validate(await read_json(request)).model_dump(exclude_unset=True))
+
+    @app.delete("/api/profiles/{profile_id}/plans/{plan_id}")
+    def delete_plan(profile_id: str, plan_id: str):
+        store.delete_plan(profile_id, plan_id)
+        return {"deleted": True}
 
     @app.post("/api/profiles/{profile_id}/plans", status_code=201, openapi_extra={
         "requestBody": {"required": True, "content": {"application/json": {"schema": PlanCreate.model_json_schema()}}}})

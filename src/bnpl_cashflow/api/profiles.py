@@ -17,6 +17,7 @@ from bnpl_cashflow.input.validation import (
     validate_profile_payload,
 )
 from bnpl_cashflow.application.profiles import create_profile
+from bnpl_cashflow.application.plan_appearance import plan_appearance
 
 
 class ProfileIdentity(BaseModel):
@@ -39,6 +40,8 @@ class PlanCreate(BaseModel):
     paid_installment_count: StrictInt | str = 0
     installment_frequency: Literal["BIWEEKLY"]
     amount_paid: str = "0.00"
+    icon: str | None = None
+    icon_color: str | None = None
 
 
 class ProfileDocument(BaseModel):
@@ -62,6 +65,10 @@ class CardNotFound(Exception):
     pass
 
 
+class PlanNotFound(Exception):
+    pass
+
+
 def validate_document(raw: object) -> dict:
     document = ProfileDocument.model_validate(raw)
     if document.format != "bnpl-profile" or document.version != 1:
@@ -74,6 +81,8 @@ def validate_document(raw: object) -> dict:
     issues = []
     for collection, model in (("credit_cards", CreditCardInput), ("bnpl_plans", BNPLPlanInput)):
         allowed = {field.name for field in fields(model)}
+        if collection == "bnpl_plans":
+            allowed |= {"icon", "icon_color"}
         for index, entry in enumerate(getattr(document, collection)):
             if set(entry) - allowed:
                 issues.append(ValidationIssue(f"{collection}[{index}]", "contains unsupported fields"))
@@ -83,13 +92,14 @@ def validate_document(raw: object) -> dict:
         raise InputValidationError(issues)
     validated = validate_profile_payload({
         "credit_cards": document.credit_cards, "bnpl_plans": document.bnpl_plans,
-    })
+    }, allow_mixed_currencies=True)
     cards = []
     for card in validated.credit_cards:
         cards.append(_card_value(card))
     return json.loads(json.dumps({
         "format": "bnpl-profile", "version": 1, "profile": identity,
-        "credit_cards": cards, "bnpl_plans": [asdict(plan) for plan in validated.bnpl_plans],
+        "credit_cards": cards, "bnpl_plans": [{**asdict(plan), **plan_appearance(raw, f"bnpl_plans[{index}]")}
+            for index, (plan, raw) in enumerate(zip(validated.bnpl_plans, document.bnpl_plans))],
     }, default=_json_value, allow_nan=False))
 
 
@@ -133,9 +143,29 @@ class ProfileStore:
         return self.export(profile_id)["bnpl_plans"]
 
     def add_plan(self, profile_id: str, raw: object) -> dict:
+        return self._save_plan(profile_id, raw)
+
+    def update_plan(self, profile_id: str, plan_id: str, raw: object) -> dict:
+        return self._save_plan(profile_id, raw, plan_id)
+
+    def delete_plan(self, profile_id: str, plan_id: str) -> None:
+        connection = self._connect()
+        try:
+            with connection:
+                connection.execute("BEGIN IMMEDIATE")
+                document = self._document(connection, profile_id)
+                plans = document["bnpl_plans"]
+                if not any(plan["id"] == plan_id for plan in plans):
+                    raise PlanNotFound()
+                document["bnpl_plans"] = [plan for plan in plans if plan["id"] != plan_id]
+                connection.execute("UPDATE profiles SET document = ? WHERE id = ?", (json.dumps(document), profile_id))
+        finally:
+            connection.close()
+
+    def _save_plan(self, profile_id: str, raw: object, plan_id: str | None = None) -> dict:
         from bnpl_cashflow.application.services import run_application
 
-        allowed = {field.name for field in fields(BNPLPlanInput)} - {"id"}
+        allowed = ({field.name for field in fields(BNPLPlanInput)} - {"id"}) | {"icon", "icon_color"}
         if not isinstance(raw, dict) or set(raw) - allowed:
             raise ValueError("Provide only payment plan fields.")
         plan = {"paid_installment_count": 0, "amount_paid": "0.00", **raw, "id": str(uuid4())}
@@ -148,15 +178,29 @@ class ProfileStore:
             with connection:
                 connection.execute("BEGIN IMMEDIATE")
                 document = self._document(connection, profile_id)
+                existing = next((item for item in document["bnpl_plans"] if item["id"] == plan_id), None)
+                if plan_id is not None:
+                    if existing is None:
+                        raise PlanNotFound()
+                    plan = {**existing, **raw, "id": plan_id}
+                    for field in ("installment_count", "paid_installment_count"):
+                        value = plan.get(field)
+                        if isinstance(value, str) and re.fullmatch(r"[+-]?[0-9]{1,10}", value.strip()):
+                            plan[field] = int(value)
                 # Validate the candidate at index zero for stable field-error paths.
+                appearance = plan_appearance(plan, "bnpl_plans[0]")
                 payload = validate_profile_payload({"credit_cards": document["credit_cards"],
-                    "bnpl_plans": [plan, *document["bnpl_plans"]]})
+                    "bnpl_plans": [plan, *(item for item in document["bnpl_plans"] if item["id"] != plan_id)]}, allow_mixed_currencies=True)
                 try:
-                    run_application(payload)
+                    run_application(validate_profile_payload({"credit_cards": document["credit_cards"], "bnpl_plans": [plan]}))
                 except (ValueError, OverflowError, DecimalException) as exc:
                     raise InputValidationError([ValidationIssue("bnpl_plans", "The schedule could not be generated. Check the dates, amount, and installment count.")]) from exc
                 saved = json.loads(json.dumps(asdict(payload.bnpl_plans[0]), default=_json_value))
-                document["bnpl_plans"].append(saved)
+                saved.update(appearance)
+                if plan_id is None:
+                    document["bnpl_plans"].append(saved)
+                else:
+                    document["bnpl_plans"] = [saved if item["id"] == plan_id else item for item in document["bnpl_plans"]]
                 # Only inputs are stored: no stale projection survives a mutation.
                 connection.execute("UPDATE profiles SET document = ? WHERE id = ?", (json.dumps(document), profile_id))
                 return saved

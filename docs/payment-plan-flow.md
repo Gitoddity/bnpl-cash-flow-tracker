@@ -6,7 +6,7 @@ and 3b5a1980095f4b8c8b0602532e94ea0d. Preserve profile and card flows.
 
 Plans belong to the active profile through its stable card ID. Provider choices
 are paypal, klarna, afterpay, sezzle, affirm; formatted legacy names normalize
-on import. CAD and USD remain supported, without conversion or mixed currencies.
+on import. CAD and USD remain supported, with separate totals and no conversion.
 Frequency remains BIWEEKLY. Python validates and generates installments before
 transactional persistence. Calculated projections are not persisted or cached by
 the React API; every calculation uses current saved inputs.
@@ -52,3 +52,6 @@ only current inputs are persisted, and the pipeline runs before each plan save.
 Edit reuse: supply `initialValues` (counts represented as input strings),
 `submitAction`, `submitLabel`, and `title` to AddPaymentPlanScreen. Provider and
 card identifiers and all schedule values are controlled from those initial values.
+
+The compact overview, edit/delete actions, mixed-currency profile support, and
+header export action are now implemented. See [Payment Plans Overview](payment-plans-overview.md).
