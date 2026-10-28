@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: duemap-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-api.txt && pip install --no-deps .
+    startCommand: python -m uvicorn bnpl_cashflow.api.app:app --host 0.0.0.0 --port $PORT --workers 1 --no-access-log
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DUEMAP_DEMO
+        value: "true"
+      - key: TZ
+        value: America/Toronto
+      - key: DUEMAP_ALLOWED_ORIGINS
+        value: https://gitoddity.github.io

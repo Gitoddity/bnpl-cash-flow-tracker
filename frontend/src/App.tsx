@@ -4,6 +4,8 @@ import { profilesApi, type ProfileSummary } from './api'
 import { CreateProfileScreen } from './CreateProfileScreen'
 import { CardsWorkspace } from './CardsWorkspace'
 import { Icon } from './Icon'
+import { demoMode, storageDescription } from './hosting'
+import { ExportProfile } from './ExportProfile'
 
 export default function App() {
   const upload = useRef<HTMLInputElement>(null)
@@ -24,6 +26,16 @@ export default function App() {
     finally { setLoading(false) }
   }
   useEffect(() => { document.title = `${brand.name} · Cash Flow Planner`; void loadProfiles() }, [])
+  useEffect(() => {
+    function sessionEnded() {
+      setProfiles([]); setSelected(null); setCreatedNotice(null)
+      window.history.replaceState(null, '', '#/')
+      setRoute('#/')
+      setError('Your temporary session ended. Create a new profile or import your downloaded profile to continue.')
+    }
+    window.addEventListener('duemap:session-ended', sessionEnded)
+    return () => window.removeEventListener('duemap:session-ended', sessionEnded)
+  }, [])
   useEffect(() => {
     const onHashChange = () => {
       const destination = window.location.hash || '#/'
@@ -82,7 +94,7 @@ export default function App() {
     <header className="topbar"><div className={`topbar-inner${landing ? '' : activeProfile ? ' workspace-header' : ' transactional-header'}`}>
       {!landing && <button className="back-button" onClick={() => navigate(workspacePage === 'plan' ? planReturn.current || `${overviewRoute}/plans` : activeProfile && workspacePage !== 'cards' ? overviewRoute : '#/')} disabled={busy || saving}><Icon name="arrow-left" />Back</button>}
       <div className="identity"><span className="wordmark">{brand.name}</span><span className="tagline">{brand.tagline}</span></div>
-      {activeProfile && workspacePage !== 'projection' ? <a className="button secondary export-profile" href={`/api/profiles/${encodeURIComponent(activeProfile.id)}/export`} download="duemap-profile.json">Export Profile</a> : !landing && <span className="header-balancer" aria-hidden="true" />}
+      {activeProfile && workspacePage !== 'projection' ? <ExportProfile className="button secondary export-profile" profileId={activeProfile.id} /> : !landing && <span className="header-balancer" aria-hidden="true" />}
     </div></header>
     {createdNotice && <div className="success-notification">
       <div className="success-message" role="status" aria-atomic="true"><Icon name="success" /><span>{createdNotice.message}</span></div>
@@ -92,6 +104,7 @@ export default function App() {
     </div>}
     <input ref={upload} type="file" accept=".json,application/json" aria-label="Import profile JSON file" hidden onChange={importFile} />
     <main className={creating ? 'create-profile-canvas' : activeProfile ? 'cards-canvas' : undefined}>
+      {demoMode && <aside className="demo-notice" role="note"><strong>Temporary demo.</strong> Download your profile to save your changes. Unsaved work is lost after 30 minutes without activity or a server restart.</aside>}
       {activeProfile && error && <div className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={importAction} disabled={busy}>Retry Import Profile</button></div>}
       {creating ? <CreateProfileScreen onCreated={created} onImport={importAction} importing={busy} importError={error} onBusyChange={setSaving} />
       : activeProfile ? <CardsWorkspace key={activeProfile.id} profile={activeProfile} profiles={profiles} onSwitchProfile={id => { planReturn.current = ''; navigate(`#/profiles/${encodeURIComponent(id)}${workspacePage === 'plans' ? '/plans' : workspacePage === 'projection' ? '/projection' : ''}`) }} page={workspacePage} saving={saving || busy}
@@ -135,13 +148,13 @@ export default function App() {
           <button className="button secondary" onClick={importAction} disabled={busy || loading}><Icon name="upload" />{busy ? 'Importing…' : 'Import Profile'}</button>
         </div>
         <aside className="privacy"><Icon name="shield" /><div>
-          <div className="privacy-heading">No Sign-Up Required <span className="badge">Local server</span></div>
-          <p>Profiles are saved on this computer by the local server, not in your browser. Closing this tab won’t delete them. Use Export Profile to download a portable backup.</p>
+          <div className="privacy-heading">No Sign-Up Required <span className="badge">{demoMode ? 'Temporary session' : 'Local server'}</span></div>
+          <p>{storageDescription}</p>
         </div></aside>
         {error && <div className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={() => void loadProfiles()} disabled={busy || loading}>Reload saved profiles</button></div>}
         {selected && <div className="profile-result" role="status"><strong>{selected.name} is ready.</strong><p>{selected.card_count} cards · {selected.plan_count} payment plans</p><p>Open your profile to manage cards and payment plans.</p></div>}
         {loading && <p role="status" className="small">Loading saved profiles…</p>}
-        {profiles.length > 0 && <div className="saved-profiles"><label htmlFor="saved-profile">Saved profiles on this computer</label>
+        {profiles.length > 0 && <div className="saved-profiles"><label htmlFor="saved-profile">{demoMode ? 'Profiles in this session' : 'Saved profiles on this computer'}</label>
           <select id="saved-profile" value="" onChange={event => {
             const profile = profiles.find(item => item.id === event.target.value)
             if (profile) { setSelected(profile); navigate(`#/profiles/${encodeURIComponent(profile.id)}`) }

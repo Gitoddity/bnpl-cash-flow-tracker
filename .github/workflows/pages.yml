@@ -1,0 +1,62 @@
+name: Deploy DueMap showcase
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'Render API origin, for example https://duemap-api.onrender.com'
+        required: true
+        type: string
+  push:
+    branches: [main]
+    paths: ['frontend/**', '.github/workflows/pages.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Push builds wait until the Render origin has been configured.
+    if: github.event_name == 'workflow_dispatch' || vars.DUEMAP_API_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validate hosted API origin
+        env:
+          API_URL: ${{ inputs.api_url || vars.DUEMAP_API_URL }}
+        run: |
+          node -e 'const u = new URL(process.env.API_URL); if (u.protocol !== "https:" || u.origin !== process.env.API_URL) throw new Error("Use an HTTPS origin without a trailing slash or path")'
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          VITE_DEMO_MODE: 'true'
+          VITE_API_BASE_URL: ${{ inputs.api_url || vars.DUEMAP_API_URL }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

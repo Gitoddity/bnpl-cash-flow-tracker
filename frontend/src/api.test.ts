@@ -48,7 +48,7 @@ test('plan request uses stable provider/card IDs and sends unchanged decimal tex
 })
 
 test('overview, update, delete and export are scoped and encode profile and plan IDs', async () => {
-  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'))
+  const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}'))
   const draft = { plan_name: 'Laptop', provider_name: 'paypal', credit_card_id: 'c1', purchase_amount: '100.01', currency: 'CAD', purchase_date: '2026-09-01', first_installment_date: '2026-09-02', installment_count: '4', paid_installment_count: '1' }
   await plansApi.overview('profile/one')
   expect(fetch).toHaveBeenLastCalledWith('/api/profiles/profile%2Fone/plans/overview', undefined)

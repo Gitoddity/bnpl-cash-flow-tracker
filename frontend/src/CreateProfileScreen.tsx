@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { profilesApi, type ProfileSummary } from './api'
 import { Icon } from './Icon'
+import { storageDescription } from './hosting'
 
 export function CreateProfileScreen({ onCreated, onImport, importing, importError, onBusyChange }: {
   onCreated: (profile: ProfileSummary) => void
@@ -38,6 +39,6 @@ export function CreateProfileScreen({ onCreated, onImport, importing, importErro
       <button className="button secondary create-import" onClick={onImport} disabled={busy || importing}><Icon name="upload" />{importing ? 'Importing…' : 'Import Profile'}</button>
       {importError && <p className="error" role="alert">{importError}</p>}
     </div>
-    <aside className="create-info"><Icon name="info" /><p><strong>No sign-up required.</strong> Profiles are saved on this computer by the local server. Closing this tab won’t delete them. JSON export is coming later.</p></aside>
+    <aside className="create-info"><Icon name="info" /><p><strong>No sign-up required.</strong> {storageDescription}</p></aside>
   </section>
 }

@@ -1,3 +1,34 @@
+import { apiBaseUrl, demoMode } from './hosting'
+
+const sessionKey = 'duemap-demo-session'
+let sessionToken: string | null = null
+let sessionPromise: Promise<string> | null = null
+
+function forgetSession() {
+  sessionToken = null
+  try { sessionStorage.removeItem(sessionKey) } catch { /* In-memory fallback. */ }
+  window.dispatchEvent(new Event('duemap:session-ended'))
+}
+
+async function demoSession(): Promise<string> {
+  if (!sessionToken) {
+    try { sessionToken = sessionStorage.getItem(sessionKey) } catch { /* In-memory fallback. */ }
+  }
+  if (sessionToken) return sessionToken
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
+      const response = await fetch(`${apiBaseUrl}/api/session`, { method: 'POST' })
+      if (!response.ok) throw new Error('The demo server is starting or busy. Please try again in a minute.')
+      const body = await response.json()
+      sessionToken = body.token
+      if (typeof sessionToken !== 'string' || !sessionToken) throw new Error('Could not start a demo session. Please try again.')
+      try { sessionStorage.setItem(sessionKey, sessionToken) } catch { /* In-memory fallback. */ }
+      return sessionToken
+    })().finally(() => { sessionPromise = null })
+  }
+  return sessionPromise
+}
+
 export type ProfileSummary = {
   id: string
   name: string
@@ -24,26 +55,52 @@ export type CardDraft = {
   name: string; current_balance: string; upcoming_statement_close_date: string; upcoming_statement_due_date: string
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestResponse(path: string, init?: RequestInit): Promise<Response> {
   let response: Response
   try {
-    response = await fetch(`/api${path}`, init)
+    let options = init
+    if (demoMode) {
+      const headers = new Headers(init?.headers)
+      headers.set('X-DueMap-Session', await demoSession())
+      options = { ...init, headers }
+    }
+    response = await fetch(`${apiBaseUrl}/api${path}`, options)
   } catch {
-    throw new Error('Cannot reach the local server. Check that FastAPI is running and try again.')
+    throw new Error(demoMode
+      ? 'Cannot reach the demo server. It may be waking up. Please try again in a minute.'
+      : 'Cannot reach the local server. Check that FastAPI is running and try again.')
   }
-  const body = await response.json().catch(() => null)
+  if (demoMode && response.status === 410) forgetSession()
   if (!response.ok) {
+    const body = await response.json().catch(() => null)
     if (response.status === 404 && body?.detail === 'Not Found' && path.includes('/projection?')) {
       throw new ApiError('The running local API does not have the Projection endpoint. Restart the DueMap API, then retry projection.')
     }
     const issues = body?.issues?.map((item: { path: string; message: string }) => `${item.path}: ${item.message}`).join(' • ')
-    throw new ApiError(issues || body?.detail || 'The local server could not complete this request. Please try again.', body?.issues || [])
+    throw new ApiError(issues || body?.detail || 'The server could not complete this request. Please try again.', body?.issues || [])
   }
-  return body as T
+  return response
 }
 
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await requestResponse(path, init)).json() as Promise<T>
+}
+
+export const exportProfileUrl = (profileId: string) => `${apiBaseUrl}/api/profiles/${encodeURIComponent(profileId)}/export`
+
 export const profilesApi = {
-  exportUrl: (profileId: string) => `/api/profiles/${encodeURIComponent(profileId)}/export`,
+  exportUrl: exportProfileUrl,
+  download: async (profileId: string) => {
+    const response = await requestResponse(`/profiles/${encodeURIComponent(profileId)}/export`)
+    const url = URL.createObjectURL(await response.blob())
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'duemap-profile.json'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  },
   list: () => request<ProfileSummary[]>('/profiles'),
   create: (name: string) => request<ProfileSummary>('/profiles', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),

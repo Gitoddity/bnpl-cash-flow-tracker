@@ -1,0 +1,4 @@
+# Only the hosted API dependencies; the legacy Streamlit UI is not deployed.
+fastapi>=0.115,<1
+pydantic>=2.9,<3
+uvicorn>=0.30,<1

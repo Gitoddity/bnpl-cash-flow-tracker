@@ -7,6 +7,8 @@ import { displayDate } from './displayDate'
 import { AddPaymentPlanScreen } from './AddPaymentPlanScreen'
 import { PaymentPlansOverview } from './PaymentPlansOverview'
 import { ProjectionScreen } from './ProjectionScreen'
+import { demoMode } from './hosting'
+import { ExportProfile } from './ExportProfile'
 
 export function CardsWorkspace({ profile, profiles, onSwitchProfile, page, saving, editingPlan, onEditPlan, onPlanUpdated, onPlanDeleted, editingCard, onEdit, onUpdated, onAdd, onOverview, onPlan, onPlans, onPlanCancel, onPlanSaved, onProjection, onSaved, onBusyChange, onImport, onManageProfiles, onNewProfile }: {
   onImport: () => void; onManageProfiles: () => void; onNewProfile: () => void
@@ -51,12 +53,12 @@ export function CardsWorkspace({ profile, profiles, onSwitchProfile, page, savin
         <button onClick={onProjection} disabled={saving} aria-current={page === 'projection' ? 'page' : undefined}><Icon name="projection" />Projection</button>
       </nav>
       {page === 'projection' && <nav className="workspace-profile-actions" aria-label="Profile actions">
-        <a href={`/api/profiles/${encodeURIComponent(profile.id)}/export`} download="duemap-profile.json">Export Profile</a>
+        <ExportProfile profileId={profile.id} />
         <button onClick={onManageProfiles} disabled={saving}>Manage Profiles</button>
         <button onClick={onImport} disabled={saving}><Icon name="upload" />Import Profile</button>
         <button onClick={onNewProfile} disabled={saving}><Icon name="plus" />New Profile</button>
       </nav>}
-      <p className="workspace-storage">Saved on this computer by the local server.</p>
+      <p className="workspace-storage">{demoMode ? 'Temporary session. Download your profile to keep your changes.' : 'Saved on this computer by the local server.'}</p>
     </aside>
     <div className="workspace-content">
       {page === 'projection' ? <ProjectionScreen key={profile.id} profileId={profile.id} onAddCard={onAdd} onAddPlan={onPlan} />

@@ -8,24 +8,28 @@ $pythonPath = Join-Path $projectRoot '.venv\Scripts\python.exe'
 $vitePath = Join-Path $frontendRoot 'node_modules\vite\bin\vite.js'
 $appUrl = 'http://127.0.0.1:5173'
 
-function Test-Endpoint([string]$Url) {
+function Test-Endpoint([string]$Url, [switch]$ApiHealth) {
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec 2
-        return $response.StatusCode -eq 200
+        if ($response.StatusCode -ne 200) { return $false }
+        if ($ApiHealth) {
+            return ($response.Content | ConvertFrom-Json).status -eq 'ok'
+        }
+        return $true
     } catch {
         return $false
     }
 }
 
-function Wait-Endpoint([string]$Url, [System.Diagnostics.Process]$ServerProcess) {
+function Wait-Endpoint([string]$Url, [System.Diagnostics.Process]$ServerProcess, [switch]$ApiHealth) {
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
-        if (Test-Endpoint $Url) { return }
-        if ($ServerProcess.HasExited) {
+        if (Test-Endpoint $Url -ApiHealth:$ApiHealth) { return }
+        if ($ServerProcess -and $ServerProcess.HasExited) {
             throw "The server stopped during startup. Check logs in $logRoot"
         }
         Start-Sleep -Milliseconds 500
     }
-    throw "The server did not become ready. Check logs in $logRoot"
+    throw "The server did not become ready at $Url. Check logs in $logRoot"
 }
 
 try {
@@ -63,9 +67,9 @@ try {
         Wait-Endpoint $appUrl $frontendProcess
     }
 
-    if (-not (Test-Endpoint "$appUrl/api/profiles")) {
-        throw 'The frontend cannot reach the DueMap API. Check the logs in .local-data\logs.'
-    }
+    # Vite can serve its index before its API proxy is ready on a cold start.
+    # Retry the full connection and require API JSON, not an HTML fallback page.
+    Wait-Endpoint "$appUrl/api/health" $frontendProcess -ApiHealth
     Write-Host "DueMap is ready at $appUrl"
     if (-not $NoBrowser) { Start-Process $appUrl }
 } catch {
