@@ -28,10 +28,11 @@ def _first_due_date_after(statement_cycle_end_date: date, payment_due_day: int) 
 
     while True:
         last_day = calendar.monthrange(year, month)[1]
-        if payment_due_day <= last_day:
-            candidate = date(year, month, payment_due_day)
-            if candidate > statement_cycle_end_date:
-                return candidate
+        # Use the same short-month estimate as the card overview: a due day
+        # of 31 means the last available day, not skipping an entire month.
+        candidate = date(year, month, min(payment_due_day, last_day))
+        if candidate > statement_cycle_end_date:
+            return candidate
 
         year, month = _add_months(year, month, 1)
 

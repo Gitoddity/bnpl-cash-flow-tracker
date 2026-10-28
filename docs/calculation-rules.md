@@ -96,6 +96,11 @@ Inputs:
 Rules:
 
 - The payment due date is the first occurrence of `payment_due_day` after the statement cycle close date.
+- For estimated monthly due dates, a day absent from a month uses that month's last
+  day, matching the card overview. For example, day 31 after a November 28 close
+  estimates November 30, rather than skipping to December 31. The resulting date
+  must still be strictly after the close. Explicit entered statement dates are
+  preserved; future dates remain estimates.
 - The due date rule must be calculated from actual dates, not only by comparing due day and statement end day.
 
 Example for statement end day 17 and due day 13:

@@ -72,3 +72,35 @@ def test_paid_all_and_default_paid(setup):
     assert client.post(base + '/plans', json={**draft, 'paid_installment_count': '4'}).status_code == 201
     result = run_application(validate_profile_payload(client.get(base + '/export').json()))
     assert len(result.plan_results[1].installments) == 0
+
+
+@pytest.mark.parametrize('balance', ['0.00', '100.00'])
+def test_october_purchase_with_due_day_31_saves_and_projects(setup, balance):
+    client, base, draft, _ = setup
+    card_id = draft['credit_card_id']
+    card = client.patch(base + '/cards/' + card_id, json={
+        'name': 'Sample card', 'current_balance': balance,
+        'upcoming_statement_close_date': '2026-10-28',
+        'upcoming_statement_due_date': '2026-10-31',
+    })
+    assert card.status_code == 200
+    response = client.post(base + '/plans', json={
+        **draft, 'purchase_amount': '323', 'purchase_date': '2026-10-28',
+        'first_installment_date': '2026-10-28', 'installment_count': 4,
+        'paid_installment_count': 1,
+    })
+    assert response.status_code == 201, response.text
+    assert client.get(base + '/plans/overview').json()['summary']['remaining_totals'] == [
+        {'currency': 'CAD', 'amount': '242.25'},
+    ]
+    view = client.get(base + '/projection?start=2026-10-01&months=3').json()
+    assert [(charge['charge_date'], charge['due_date'], charge['amount']) for charge in view['charges']] == [
+        ('2026-11-11', '2026-11-30', '80.75'),
+        ('2026-11-25', '2026-11-30', '80.75'),
+        ('2026-12-09', '2026-12-31', '80.75'),
+    ]
+    assert [(due['due_date'], due['amount']) for due in view['dues'] if due['currency'] == 'CAD'] == [
+        ('2026-11-30', '161.50'), ('2026-12-31', '80.75'),
+    ]
+    saved_card = client.get(base + '/export').json()['credit_cards'][0]
+    assert saved_card['upcoming_statement_due_date'] == '2026-10-31'

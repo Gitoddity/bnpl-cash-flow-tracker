@@ -108,3 +108,18 @@ def test_leap_year_safe_due_date():
 
     assert due_date.payment_due_date == date(2028, 3, 29)
 
+
+def test_due_day_31_uses_november_end_instead_of_skipping_a_statement():
+    card = _make_card(statement_end_day=28, payment_due_day=31)
+    cycle = StatementCycle(card.id, date(2026, 10, 29), date(2026, 11, 28))
+    assert map_due_date(card, cycle).payment_due_date == date(2026, 11, 30)
+
+
+def test_short_month_due_date_respects_leap_year_and_strictly_follows_close():
+    card = _make_card(statement_end_day=17, payment_due_day=31)
+    for year, last_day in ((2026, 28), (2028, 29)):
+        cycle = StatementCycle(card.id, date(year, 1, 18), date(year, 2, 17))
+        assert map_due_date(card, cycle).payment_due_date == date(year, 2, last_day)
+    # Clamping must not place the payment on the closing date itself.
+    cycle = StatementCycle(card.id, date(2026, 11, 1), date(2026, 11, 30))
+    assert map_due_date(card, cycle).payment_due_date == date(2026, 12, 31)
