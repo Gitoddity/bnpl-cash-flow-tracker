@@ -22,6 +22,18 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
   const [saving, setSaving] = useState(false)
   const pending = useRef(false)
   const form = useRef<HTMLFormElement>(null)
+  function changeField(key: keyof CardDraft, value: string) {
+    setDraft(current => ({ ...current, [key]: value }))
+    // Server feedback describes the submitted values, not subsequent edits.
+    // The due-date ordering error also depends on the closing date.
+    setErrors(current => {
+      const updated = { ...current }
+      delete updated[key]
+      if (key === 'upcoming_statement_close_date') delete updated.upcoming_statement_due_date
+      return updated
+    })
+    setError('')
+  }
   useEffect(() => {
     const first = fields.find(field => errors[field.key])
     if (!saving && first) form.current?.querySelector<HTMLInputElement>(`#card-${first.key}`)?.focus()
@@ -54,7 +66,7 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
         <input id={`card-${key}`} name={key} type={key.startsWith('upcoming_') ? 'date' : 'text'} inputMode={item.mode} autoComplete="off"
           aria-required={key === 'name' || undefined} placeholder={item.placeholder} value={draft[key]} disabled={saving}
           aria-invalid={!!errors[key]} aria-describedby={`card-${key}-help${errors[key] ? ` card-${key}-error` : ''}`}
-          onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} />
+          onChange={event => changeField(key, event.target.value)} />
       </div>
       <p className="field-help" id={`card-${key}-help`}>{item.help}</p>
       {errors[key] && <p className="error" role="alert" id={`card-${key}-error`}>{errors[key]}</p>}

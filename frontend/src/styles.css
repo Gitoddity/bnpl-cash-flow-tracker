@@ -263,7 +263,9 @@ input, select { width: 100%; border: 1px solid var(--border); background: white;
 .card-form legend { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 20px; color: var(--muted); }
 .card-field { min-width: 0; }
 .card-field label { margin: 0 0 8px; font-size: 13px; }
-.card-field input { background: #f8f9ff; min-height: 48px; }
+.card-field input { width: 100%; min-width: 0; max-width: 100%; background: #f8f9ff; min-height: 48px; }
+.card-field input[type="date"] { display: block; appearance: none; -webkit-appearance: none; }
+.card-field input[type="date"]::-webkit-date-and-time-value { min-height: 1.5em; text-align: left; }
 .card-field input::placeholder { color: #606169; opacity: 1; font-size: 12px; }
 .card-field input[aria-invalid="true"] { border-color: #ba1a1a; background: #fff8f6; }
 .field-help, .card-field .error { font-size: 12px; line-height: 20px; margin: 8px 0 0; overflow-wrap: anywhere; }

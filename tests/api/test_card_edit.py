@@ -6,6 +6,26 @@ from fastapi.testclient import TestClient
 from bnpl_cashflow.api.app import create_app
 
 
+def test_correcting_statement_dates_accepts_later_due_date(tmp_path):
+    client = TestClient(create_app(tmp_path / 'dates.sqlite3'))
+    profile = client.post('/api/profiles', json={'name': 'Sample'}).json()
+    endpoint = f'/api/profiles/{profile["id"]}/cards'
+    draft = {'name': 'Tvdya', 'current_balance': '500',
+             'upcoming_statement_close_date': '2026-10-15',
+             'upcoming_statement_due_date': '2026-10-10'}
+    assert client.post(endpoint, json=draft).status_code == 422
+    assert client.get(endpoint).json() == []
+    draft['upcoming_statement_due_date'] = '2026-10-30'
+    response = client.post(endpoint, json=draft)
+    assert response.status_code == 201, response.text
+    card = response.json()
+    assert card['latest_statement_close_date'] == '2026-10-15'
+    assert card['latest_statement_due_date'] == '2026-10-30'
+    edit = endpoint + '/' + card['id']
+    assert client.patch(edit, json={'upcoming_statement_due_date': '2026-10-01'}).status_code == 422
+    assert client.patch(edit, json={'upcoming_statement_due_date': '2026-10-30'}).status_code == 200
+
+
 def test_edit_preserves_identity_plans_and_other_profiles(tmp_path):
     path = tmp_path / 'profiles.sqlite3'
     client = TestClient(create_app(path, today_provider=lambda: date(2026, 9, 24)))
