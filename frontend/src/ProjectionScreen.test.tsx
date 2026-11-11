@@ -83,11 +83,26 @@ test('both navigation paths mount projection and returning to it fetches fresh r
 test('currency totals and entered balances stay distinct without invented statement labels', async () => {
   const balance = { ...data.dues[0], currency: 'UNSPECIFIED', amount: '79.01', balance_amount: '79.01', installments: [], installment_count: 0, plan_count: 0, contributing_total: '0.00' }
   vi.mocked(projectionApi.get).mockResolvedValue({ ...data, dues: [balance], monthly: [{ period: '2026-09', charges: [], dues: [{ currency: 'UNSPECIFIED', amount: '79.01' }, { currency: 'USD', amount: '12.34' }] }] })
-  standalone()
+  const edit = vi.fn()
+  render(<ProjectionScreen profileId="personal" onAddCard={vi.fn()} onAddPlan={vi.fn()} onEditCard={edit} />)
   await screen.findByText('Entered card balance due')
   expect(screen.getByText('USD 12.34')).toBeInTheDocument()
-  expect(screen.getAllByText('Currency unspecified 79.01')).toHaveLength(3)
-  expect(screen.getByText(/Card balances have no saved currency/)).toBeInTheDocument()
+  expect(screen.getAllByText('Currency not set 79.01')).toHaveLength(3)
+  expect(screen.getByText(/Choose CAD or USD for this card/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Edit card currency' }))
+  expect(edit).toHaveBeenCalledWith('c')
+})
+
+test('a card-only CAD balance displays its currency without a missing-currency message', async () => {
+  vi.mocked(projectionApi.get).mockResolvedValue({ ...data, plan_count: 0,
+    dues: [{ ...data.dues[0], amount: '200.00', balance_amount: '200.00', plan_count: 0, installments: [], contributing_total: '0.00' }],
+    monthly: [{ period: '2026-09', charges: [], dues: [{ currency: 'CAD', amount: '200.00' }] }],
+  })
+  standalone()
+  await screen.findByText('Entered card balance due')
+  expect(screen.getAllByText('CAD 200.00')).toHaveLength(3)
+  expect(screen.queryByText(/Currency not set/)).not.toBeInTheDocument()
+  expect(screen.getByText(/Included once in this card/)).toBeInTheDocument()
 })
 
 test('charge schedule remains available when card dues fall outside the selected period', async () => {

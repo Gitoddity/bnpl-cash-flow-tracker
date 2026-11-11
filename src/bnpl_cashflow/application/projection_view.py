@@ -1,7 +1,7 @@
 """Structured projection reporting over the existing application pipeline.
 
-Saved cards do not have a currency. Their entered balances therefore remain in
-a separate, explicitly unspecified bucket; a plan's currency cannot label them.
+Card balances use their saved currency. Legacy balances without a currency
+remain separate until the owner sets one; a plan's currency cannot label them.
 """
 from datetime import date
 from decimal import Decimal
@@ -23,7 +23,8 @@ def build_projection(document: dict, as_of: date, start: date | None = None,
         raise ValueError("Choose a card from the active profile.")
     cards = [card for card in all_cards if not card_id or card["id"] == card_id]
     plans = [plan for plan in document["bnpl_plans"] if any(card["id"] == plan["credit_card_id"] for card in cards)]
-    currencies = sorted({plan["currency"] for plan in document["bnpl_plans"]})
+    currencies = sorted({plan["currency"] for plan in document["bnpl_plans"]}
+                        | {card["currency"] for card in all_cards if card.get("currency")})
     if currency and currency not in [*currencies, "UNSPECIFIED"]:
         raise ValueError("Choose a currency from the active profile.")
     periods = [_month_after(start, offset) for offset in range(months)]
@@ -37,7 +38,7 @@ def build_projection(document: dict, as_of: date, start: date | None = None,
             continue
         selected_plans = [plan for plan in plans if plan["currency"] == code]
         result = service.run(validate_profile_payload({
-            "credit_cards": [{**card, "current_balance": "0.00"} for card in cards],
+            "credit_cards": [{**card, "current_balance": card["current_balance"] if card.get("currency") == code else "0.00"} for card in cards],
             "bnpl_plans": selected_plans,
         }))
         for plan_result in result.plan_results:
@@ -55,7 +56,10 @@ def build_projection(document: dict, as_of: date, start: date | None = None,
                 })
         dues.extend(_dues(result, code))
     if not currency or currency == "UNSPECIFIED":
-        balance_result = service.run(validate_profile_payload({"credit_cards": cards, "bnpl_plans": []}))
+        balance_result = service.run(validate_profile_payload({
+            "credit_cards": [{**card, "current_balance": card["current_balance"] if not card.get("currency") else "0.00"} for card in cards],
+            "bnpl_plans": [],
+        }))
         dues.extend(_dues(balance_result, "UNSPECIFIED"))
     charges = sorted((item for item in charges if start.isoformat() <= item["charge_date"] < end.isoformat()),
                      key=lambda item: (item["charge_date"], item["card_id"], item["plan_id"], item["installment_number"]))

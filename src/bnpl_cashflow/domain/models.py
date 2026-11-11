@@ -83,6 +83,7 @@ class CreditCard:
     current_balance: Decimal = Decimal("0.00")
     current_balance_due_date: date | None = None
     profile_id: str = "profile_1"
+    currency: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "id", _require_non_empty_text(self.id, "id"))
@@ -91,6 +92,8 @@ class CreditCard:
         object.__setattr__(self, "statement_end_day", _require_day_of_month(self.statement_end_day, "statement_end_day"))
         object.__setattr__(self, "payment_due_day", _require_day_of_month(self.payment_due_day, "payment_due_day"))
         object.__setattr__(self, "current_balance", _require_non_negative_decimal(self.current_balance, "current_balance"))
+        if self.currency is not None and self.currency not in {"CAD", "USD"}:
+            raise ValueError("card currency must be CAD or USD")
         if self.current_balance_due_date is not None:
             object.__setattr__(
                 self,

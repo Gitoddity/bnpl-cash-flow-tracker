@@ -8,7 +8,7 @@ vi.mock('./api', async importOriginal => ({ ...await importOriginal<typeof impor
   plansApi: { list: vi.fn(), create: vi.fn(), overview: vi.fn() }, profilesApi: { list: vi.fn(), create: vi.fn(), import: vi.fn() }, cardsApi: { list: vi.fn(), create: vi.fn(), update: vi.fn() },
 }))
 const profile = { id: 'personal', name: 'Personal', card_count: 0, plan_count: 0 }
-const card: Card = { id: 'c1', profile_id: 'personal', name: 'TD Visa', current_balance: '500.00', statement_end_day: 18, payment_due_day: 12,
+const card: Card = { id: 'c1', profile_id: 'personal', name: 'TD Visa', current_balance: '500.00', currency: 'CAD', statement_end_day: 18, payment_due_day: 12,
   as_of_date: '2026-09-24', next_statement_close_date: '2026-10-18', next_payment_due_date: '2026-10-12',
   latest_statement_close_date: '2026-09-18', latest_statement_due_date: '2026-10-12', next_statement_due_date: '2026-11-12', upcoming_statement_close_date: '2026-09-18', upcoming_statement_due_date: '2026-10-12' }
 beforeEach(() => {
@@ -56,9 +56,9 @@ test('saves under the active profile, shows returned data and success, and adds 
   const user = await openForm()
   await fillForm(user)
   await user.click(screen.getByRole('button', { name: 'Save Card' }))
-  expect(cardsApi.create).toHaveBeenCalledWith('personal', { name: 'TD Visa', current_balance: '500.00', upcoming_statement_close_date: '2026-10-18', upcoming_statement_due_date: '2026-11-12' })
+  expect(cardsApi.create).toHaveBeenCalledWith('personal', { name: 'TD Visa', current_balance: '500.00', currency: 'CAD', upcoming_statement_close_date: '2026-10-18', upcoming_statement_due_date: '2026-11-12' })
   const tile = await screen.findByRole('article', { name: 'TD Visa' })
-  expect(within(tile).getByText('$500.00')).toBeInTheDocument()
+  expect(within(tile).getByText('CAD 500.00')).toBeInTheDocument()
   expect(within(tile).getByText(/Latest statement/)).toBeInTheDocument()
   expect(within(tile).getByText('September 18, 2026')).toBeInTheDocument()
   expect(within(tile).getByText(/Upcoming statement/)).toHaveTextContent('Estimated')
@@ -233,7 +233,7 @@ test('pencil prefills card, cancel discards changes, and successful edit replace
   await user.clear(screen.getByLabelText('Current Balance'))
   await user.type(screen.getByLabelText('Current Balance'), '125.50')
   await user.click(screen.getByRole('button', { name: 'Save Changes' }))
-  expect(cardsApi.update).toHaveBeenLastCalledWith('personal', 'c1', { name: 'Corrected Card', current_balance: '125.50', upcoming_statement_close_date: '2026-09-18', upcoming_statement_due_date: '2026-10-20' })
+  expect(cardsApi.update).toHaveBeenLastCalledWith('personal', 'c1', { name: 'Corrected Card', current_balance: '125.50', currency: 'CAD', upcoming_statement_close_date: '2026-09-18', upcoming_statement_due_date: '2026-10-20' })
   expect(await screen.findByRole('article', { name: 'Corrected Card' })).toHaveTextContent('October 20, 2026')
   expect(screen.getAllByRole('article')).toHaveLength(1)
   expect(screen.getByRole('status')).toHaveTextContent('Corrected Card updated successfully.')
@@ -241,6 +241,6 @@ test('pencil prefills card, cancel discards changes, and successful edit replace
   view.unmount()
   vi.mocked(cardsApi.list).mockResolvedValue([revised])
   render(<App />)
-  expect(await screen.findByRole('article', { name: 'Corrected Card' })).toHaveTextContent('$125.50')
+  expect(await screen.findByRole('article', { name: 'Corrected Card' })).toHaveTextContent('CAD 125.50')
   expect(screen.queryByText(/updated successfully/)).not.toBeInTheDocument()
 })

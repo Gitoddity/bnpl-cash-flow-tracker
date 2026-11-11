@@ -36,7 +36,20 @@ test.each(['due', 'close'])('correcting the %s date clears the stale cross-field
   await user.click(screen.getByRole('button', { name: 'Save Card' }))
   await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
   expect(create).toHaveBeenLastCalledWith('personal', {
-    name: 'Tvdya', current_balance: '500',
+    name: 'Tvdya', current_balance: '500', currency: 'CAD',
     upcoming_statement_close_date: '2026-10-15', upcoming_statement_due_date: '2026-10-30',
   })
+})
+
+test('an older card can select and save USD without changing its dates or balance', async () => {
+  const update = vi.spyOn(cardsApi, 'update').mockResolvedValue({ ...saved, currency: 'USD' })
+  render(<AddCardScreen profileId="personal" existingCard={saved} onSaved={vi.fn()} onCancel={vi.fn()} onBusyChange={vi.fn()} />)
+  const currency = screen.getByLabelText('Card Currency')
+  expect(currency).toHaveValue('')
+  await userEvent.selectOptions(currency, 'USD')
+  await userEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await waitFor(() => expect(update).toHaveBeenCalledWith('personal', 'card', {
+    name: 'Tvdya', current_balance: '500', currency: 'USD',
+    upcoming_statement_close_date: '2026-10-15', upcoming_statement_due_date: '2026-10-30',
+  }))
 })

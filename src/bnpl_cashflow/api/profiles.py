@@ -113,6 +113,8 @@ def _json_value(value: object) -> str:
 
 def _card_value(card: CreditCardInput) -> dict:
     value = asdict(card)
+    if value['currency'] is None:
+        del value['currency']
     if value["current_balance_due_date"] is None:
         del value["current_balance_due_date"]
     for field in ("upcoming_statement_close_date", "upcoming_statement_due_date"):
@@ -255,7 +257,7 @@ class ProfileStore:
     @staticmethod
     def _card_changes(raw: object) -> dict:
         allowed = {"name", "current_balance", "statement_end_day", "payment_due_day",
-                   "upcoming_statement_close_date", "upcoming_statement_due_date"}
+                   "upcoming_statement_close_date", "upcoming_statement_due_date", "currency"}
         if not isinstance(raw, dict) or set(raw) - allowed:
             raise ValueError("Provide only nickname, current balance, and statement schedule fields.")
         card = dict(raw)

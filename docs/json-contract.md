@@ -77,6 +77,9 @@ If omitted, the application should use sensible defaults and render the standard
 - `name`: string, required, human-readable card name.
 - `statement_end_day`: integer, required, 1 to 31.
 - `payment_due_day`: integer, required, 1 to 31.
+- `currency`: optional `CAD` or `USD`, used for this card's entered balance.
+  Older documents may omit it. Add/Edit Card saves the selected currency, and
+  export preserves it. Missing currencies are never inferred from a plan.
 - `current_balance`: string, optional, decimal money value, defaults to `0.00` when omitted.
 - `current_balance_due_date`: string, optional, `YYYY-MM-DD`; assigns the current balance to a cash-flow due date.
 

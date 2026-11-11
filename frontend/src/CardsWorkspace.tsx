@@ -61,7 +61,7 @@ export function CardsWorkspace({ profile, profiles, onSwitchProfile, page, savin
       <p className="workspace-storage">{demoMode ? 'Temporary session. Download your profile to keep your changes.' : 'Saved on this computer by the local server.'}</p>
     </aside>
     <div className="workspace-content">
-      {page === 'projection' ? <ProjectionScreen key={profile.id} profileId={profile.id} onAddCard={onAdd} onAddPlan={onPlan} />
+      {page === 'projection' ? <ProjectionScreen key={profile.id} profileId={profile.id} onAddCard={onAdd} onAddPlan={onPlan} onEditCard={cards ? id => { const card = cards.find(item => item.id === id); if (card) onEdit(card) } : undefined} />
       : error ? <section className="error-panel" role="alert"><p>{error}</p><button className="text-button" onClick={() => setRetry(value => value + 1)}>Retry loading cards</button></section>
       : cards === null ? <p role="status">Loading cards…</p>
       : page === 'edit-card' ? cardToEdit ? <AddCardScreen key={cardToEdit.id} profileId={profile.id} existingCard={cardToEdit} onCancel={onOverview} onBusyChange={onBusyChange} onSaved={card => {
@@ -89,7 +89,7 @@ export function CardsWorkspace({ profile, profiles, onSwitchProfile, page, savin
         <div className="cards-grid">{cards.map(card => <article className="saved-card" key={card.id} aria-label={card.name}>
           <div className="saved-card-heading"><span className="card-symbol"><Icon name="wallet" /></span><h2>{card.name}</h2>
             <button className="edit-card-button" aria-label={`Edit ${card.name}`} title="Edit credit card" onClick={() => onEdit(card)}><Icon name="pencil" /></button></div>
-          <dl><div className="card-balance"><dt>Current balance</dt><dd>${card.current_balance.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</dd></div>
+          <dl><div className="card-balance"><dt>Current balance</dt><dd>{card.currency ? `${card.currency} ` : '$'}{card.current_balance.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</dd></div>
             <div className="card-dates">
               <div><dt>Latest statement</dt>{card.upcoming_statement_close_date ? <>
                 <dd>Closed <time dateTime={card.latest_statement_close_date}>{displayDate(card.latest_statement_close_date)}</time></dd>

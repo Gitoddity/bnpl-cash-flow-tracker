@@ -48,6 +48,7 @@ class CreditCardInput:
     profile_id: str = "profile_1"
     upcoming_statement_close_date: date | None = None
     upcoming_statement_due_date: date | None = None
+    currency: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +149,13 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue], *, allow_e
 
         card_id = _require_string_field(item, "id", path, issues)
         name = _require_string_field(item, "name", path, issues)
+        card_currency = item.get("currency")
+        if card_currency is not None:
+            if isinstance(card_currency, str) and card_currency.strip().upper() in SUPPORTED_CURRENCIES:
+                card_currency = card_currency.strip().upper()
+            else:
+                issues.append(ValidationIssue(f"{path}.currency", "choose CAD or USD"))
+                card_currency = None
         exact_close = exact_due = None
         if "upcoming_statement_close_date" in item or "upcoming_statement_due_date" in item:
             exact_close = _require_date_field(item, "upcoming_statement_close_date", path, issues)
@@ -200,6 +208,7 @@ def _validate_credit_cards(value: Any, issues: list[ValidationIssue], *, allow_e
                 profile_id=profile_id,
                 upcoming_statement_close_date=exact_close,
                 upcoming_statement_due_date=exact_due,
+                currency=card_currency,
             )
         )
 

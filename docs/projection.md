@@ -9,8 +9,8 @@ Optional query parameters:
   calculation date's month.
 - `months`: 1–24, default 6. The response's `end_date` is exclusive.
 - `card_id`: a card belonging to this profile.
-- `currency`: a plan currency present in this profile, or `UNSPECIFIED` for
-  entered card balances.
+- `currency`: a saved card or plan currency present in this profile, or
+  `UNSPECIFIED` for older cards whose currency has not been set.
 
 Amounts are decimal strings. `charges` describes provider installments charged
 to cards, including the mapped statement start/close and card due date. `dues`
@@ -19,12 +19,15 @@ and due windows are filtered independently: an installment charged before the
 selected period may still contribute to a due inside it. Monthly and summary
 totals are calculated in Python.
 
-The engine runs separately for each plan currency with card balances zeroed,
-then once for entered card balances without plans. This prevents currencies
-being combined and prevents balances being counted once per currency. Cards
-currently have no currency field; `UNSPECIFIED` balances must be labeled
-"currency unspecified" and must not be added to CAD or USD totals. The shared
-service now supports balance-only profiles using this explicit marker.
+Cards support an optional saved `currency` field (CAD or USD). Add/Edit Card
+provides an explicit selector; new cards start with a visible CAD selection.
+Older profiles import without inventing a currency and can set it through Edit
+Card, including the projection's Edit card currency action. Export preserves it.
+
+The engine runs separately for each currency, including only the card balances
+saved in that currency. Matching card dues combine a balance and installments
+once. Different currencies remain separate without conversion. Legacy balances
+with no currency run separately as `UNSPECIFIED` until the owner selects one.
 
 The pipeline retains its existing date rules, paid-installment exclusion,
 exact amount-paid adjustment, and rounding. Statement/due mapping for

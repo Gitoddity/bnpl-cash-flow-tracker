@@ -70,9 +70,9 @@ class ApplicationService:
             projections.extend(plan_projections)
 
         bnpl_cash_flow_obligations = tuple(aggregate_cash_flow(installments, due_dates))
-        # Cards have no saved currency. A balance-only projection must remain
-        # usable without assigning it an invented currency or an empty value
-        # that CashFlowObligation rejects.
+        # Legacy cards may have no saved currency. Keep balance-only runs
+        # usable without inventing one; explicitly saved card currencies
+        # override this fallback in the balance-obligation builder below.
         currency = bnpl_plans[0].currency if bnpl_plans else "UNSPECIFIED"
         cash_flow_obligations = _include_current_balance_obligations(
             bnpl_cash_flow_obligations,
@@ -139,6 +139,7 @@ def _build_credit_card(card_input: CreditCardInput) -> CreditCard:
         current_balance=card_input.current_balance,
         current_balance_due_date=card_input.current_balance_due_date,
         profile_id=card_input.profile_id,
+        currency=card_input.currency,
     )
 
 
@@ -186,7 +187,7 @@ def _include_current_balance_obligations(
     currency: str,
     as_of_date: date | None = None,
 ) -> tuple[CashFlowObligation, ...]:
-    by_key = {(item.credit_card_id, item.due_date): item for item in obligations}
+    by_key = {(item.credit_card_id, item.due_date, item.currency): item for item in obligations}
 
     for card in credit_cards:
         if card.current_balance == 0:
@@ -199,7 +200,8 @@ def _include_current_balance_obligations(
         if balance_due_date is None:
             continue
 
-        key = (card.id, balance_due_date)
+        balance_currency = card.currency or currency
+        key = (card.id, balance_due_date, balance_currency)
         existing = by_key.get(key)
         if existing is not None:
             by_key[key] = replace(
@@ -218,7 +220,7 @@ def _include_current_balance_obligations(
             cash_flow_year=due_date.year,
             cash_flow_month=due_date.month,
             cash_flow_period=f"{due_date.year:04d}-{due_date.month:02d}",
-            currency=currency,
+            currency=balance_currency,
             total_amount=card.current_balance,
             installments=(),
             current_balance_amount=card.current_balance,

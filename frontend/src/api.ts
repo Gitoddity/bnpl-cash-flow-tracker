@@ -46,6 +46,7 @@ export class ApiError extends Error {
 }
 export type Card = {
   id: string; profile_id: string; name: string; current_balance: string
+  currency?: string
   statement_end_day: number; payment_due_day: number
   as_of_date: string; next_statement_close_date: string; next_payment_due_date: string
   upcoming_statement_close_date?: string; upcoming_statement_due_date?: string
@@ -53,6 +54,7 @@ export type Card = {
 }
 export type CardDraft = {
   name: string; current_balance: string; upcoming_statement_close_date: string; upcoming_statement_due_date: string
+  currency?: string
 }
 
 async function requestResponse(path: string, init?: RequestInit): Promise<Response> {

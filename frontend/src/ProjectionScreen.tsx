@@ -5,18 +5,18 @@ import { Icon } from './Icon'
 
 function money(currency: string, amount: string) {
   const [whole, fraction = '00'] = amount.split('.')
-  return `${currency === 'UNSPECIFIED' ? 'Currency unspecified' : currency} ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(2, '0')}`
+  return `${currency === 'UNSPECIFIED' ? 'Currency not set' : currency} ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction.padEnd(2, '0')}`
 }
 function Amounts({ values }: { values: CurrencyAmount[] }) {
   return <>{values.map(value => <span className="projection-money" key={value.currency}>{money(value.currency, value.amount)}</span>)}</>
 }
-function DueCard({ due, expanded }: { due: ProjectionDue; expanded: boolean }) {
+function DueCard({ due, expanded, onEditCard }: { due: ProjectionDue; expanded: boolean; onEditCard?: (id: string) => void }) {
   const date = new Date(`${due.due_date}T00:00:00Z`)
   return <details className="projection-due" open={expanded || undefined}>
     <summary aria-label={`${due.card_name}, due ${displayDate(due.due_date)}, ${money(due.currency, due.amount)}`}>
       <time className="projection-date" dateTime={due.due_date} aria-label={displayDate(due.due_date)}><span>{date.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}</span><strong>{String(date.getUTCDate()).padStart(2, '0')}</strong></time>
       <div className="projection-due-title"><div><strong>{due.card_name}</strong>{due.plan_count > 0 && <span className="projection-plan-count"><Icon name="calendar" />{due.plan_count} payment {due.plan_count === 1 ? 'plan' : 'plans'}</span>}</div>
-        <span className="projection-due-kind"><Icon name="wallet" />{due.currency === 'UNSPECIFIED' ? 'Entered card balance due' : 'Projected card due'}</span>
+        <span className="projection-due-kind"><Icon name="wallet" />{due.installments.length === 0 ? 'Entered card balance due' : 'Projected card due'}</span>
       </div>
       <strong className="projection-money projection-due-amount">{money(due.currency, due.amount)}</strong><span className="projection-chevron" aria-hidden="true" />
     </summary>
@@ -26,13 +26,14 @@ function DueCard({ due, expanded }: { due: ProjectionDue; expanded: boolean }) {
         <caption className="sr-only">Provider installments contributing to this card due</caption><thead><tr><th scope="col">Included payment plans</th><th scope="col">Installment</th></tr></thead>
         <tbody>{due.installments.map(item => <tr key={`${item.plan_id}-${item.installment_number}`}><th scope="row"><span className="projection-bullet" aria-hidden="true" /><div><strong>{item.plan_name}</strong><span>{providerNames[item.provider_name as keyof typeof providerNames] || item.provider_name} · Installment {item.installment_number} of {item.installment_count}</span><span>Provider charge to card: <time dateTime={item.charge_date}>{displayDate(item.charge_date)}</time></span></div></th><td className="projection-money">{money(due.currency, item.amount)}</td></tr>)}</tbody>
       </table></div>}
-      {due.currency === 'UNSPECIFIED' && <p className="projection-balance-note">Entered balance: <strong className="projection-money">{money(due.currency, due.balance_amount)}</strong>. Card balances have no saved currency and are kept separate from plan totals. The due date follows your entered balance date or the existing card schedule.</p>}
+      {due.balance_amount !== '0.00' && <p className="projection-balance-note">Entered balance: <strong className="projection-money">{money(due.currency, due.balance_amount)}</strong>. {due.currency === 'UNSPECIFIED' ? 'Choose CAD or USD for this card to label its balance correctly. It is kept separate from other currency totals until then.' : 'Included once in this card’s total due.'} The due date follows your entered balance date or the existing card schedule.</p>}
+      {due.currency === 'UNSPECIFIED' && onEditCard && <button className="button secondary" onClick={() => onEditCard(due.card_id)}>Edit card currency</button>}
     </div>
     {due.installments.length > 0 && <footer><span>Total contributing installments</span><strong className="projection-money">{money(due.currency, due.contributing_total)}</strong></footer>}
   </details>
 }
 
-export function ProjectionScreen({ profileId, onAddCard, onAddPlan }: { profileId: string; onAddCard: () => void; onAddPlan: () => void }) {
+export function ProjectionScreen({ profileId, onAddCard, onAddPlan, onEditCard }: { profileId: string; onAddCard: () => void; onAddPlan: () => void; onEditCard?: (id: string) => void }) {
   const [data, setData] = useState<Projection | null>(null)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
@@ -55,7 +56,7 @@ export function ProjectionScreen({ profileId, onAddCard, onAddPlan }: { profileI
       <label>Start month<input type="month" value={start || data?.start_date.slice(0, 7) || ''} min="1900-01" max="9996-12" onChange={event => setStart(event.target.value)} /></label>
       <label>Period<select value={months} onChange={event => setMonths(Number(event.target.value))}>{[1, 3, 6, 12, 24].map(value => <option key={value} value={value}>{value} {value === 1 ? 'month' : 'months'}</option>)}</select></label>
       <label>Credit card<select value={card} onChange={event => setCard(event.target.value)}><option value="">All credit cards</option>{choices?.cards.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label>Currency<select value={currency} onChange={event => setCurrency(event.target.value)}><option value="">All currencies (separate totals)</option>{choices?.currencies.map(code => <option key={code} value={code}>{code}</option>)}<option value="UNSPECIFIED">Currency unspecified (card balances)</option></select></label>
+      <label>Currency<select value={currency} onChange={event => setCurrency(event.target.value)}><option value="">All currencies (separate totals)</option>{choices?.currencies.map(code => <option key={code} value={code}>{code}</option>)}<option value="UNSPECIFIED">Cards without a currency</option></select></label>
       <button className="button secondary" onClick={() => setRetry(value => value + 1)}>Refresh projection</button>
     </div></details>
     {error ? <div className="error-panel" role="alert"><h2>Could not calculate projection</h2><p>{error}</p><button className="button secondary" onClick={() => setRetry(value => value + 1)}>Retry projection</button></div>
@@ -66,7 +67,7 @@ export function ProjectionScreen({ profileId, onAddCard, onAddPlan }: { profileI
       {data.dues.length === 0 ? <div className="projection-empty"><h2>No card dues in this period</h2><p>Choose another period to see projected dues. Completed plans have no remaining installments.</p></div>
       : <div className="projection-months">{data.monthly.filter(month => month.dues.length > 0).map(month => <section className="projection-month" key={month.period} aria-label={month.period}>
         <header><h2>{new Date(`${month.period}-01T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</h2><div><span>Total due</span><Amounts values={month.dues} /></div></header>
-        <div className="projection-timeline">{data.dues.filter(due => due.due_date.startsWith(month.period)).map(due => <DueCard key={`${due.card_id}-${due.due_date}-${due.currency}`} due={due} expanded={due === data.dues[0]} />)}</div>
+        <div className="projection-timeline">{data.dues.filter(due => due.due_date.startsWith(month.period)).map(due => <DueCard key={`${due.card_id}-${due.due_date}-${due.currency}`} due={due} expanded={due === data.dues[0]} onEditCard={onEditCard} />)}</div>
       </section>)}</div>}
       {!!data.charges?.length && <details className="projection-charge-schedule"><summary>Provider charges in the selected period</summary>
         <p>These installments charge your credit cards. Their card payment dues may fall in a later month.</p>
