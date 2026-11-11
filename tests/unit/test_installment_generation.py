@@ -139,7 +139,7 @@ def test_final_installment_remainder_handling():
     [
         (Decimal("120.00"), 4),
         (Decimal("100.00"), 3),
-        (Decimal("99.99"), 6),
+        (Decimal("99.99"), 2),
     ],
 )
 def test_total_reconciliation(purchase_amount: Decimal, installment_count: int):

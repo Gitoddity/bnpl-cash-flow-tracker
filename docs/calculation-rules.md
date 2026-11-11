@@ -21,6 +21,9 @@ Inputs:
 
 Rules:
 
+- Plans must have between 1 and 4 total installments. Paid installments must be
+  a whole number from 0 through the plan's total installments. These constraints
+  apply to plan creation, editing, profile imports, and calculation inputs.
 - Installment 1 occurs on `first_installment_date`.
 - Each subsequent installment occurs one frequency interval after the previous installment.
 - For Pay in 4 plans using a 14-day interval, installment dates are:

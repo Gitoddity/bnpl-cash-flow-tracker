@@ -37,6 +37,7 @@ def test_save_restart_export_import_and_calculations(setup, tmp_path, provider):
     ('purchase_amount', '0'), ('purchase_amount', '-1'), ('purchase_amount', 'oops'), ('purchase_amount', 'NaN'),
     ('purchase_date', ''), ('purchase_date', '2026-02-30'), ('first_installment_date', ''), ('first_installment_date', 'invalid'),
     ('installment_count', '0'), ('installment_count', '1.5'), ('installment_count', True),
+    ('installment_count', '5'), ('installment_count', 5),
     ('paid_installment_count', '-1'), ('paid_installment_count', '1.5'), ('paid_installment_count', '5'),
 ])
 def test_invalid_fields_do_not_save(setup, field, value):
@@ -72,6 +73,44 @@ def test_paid_all_and_default_paid(setup):
     assert client.post(base + '/plans', json={**draft, 'paid_installment_count': '4'}).status_code == 201
     result = run_application(validate_profile_payload(client.get(base + '/export').json()))
     assert len(result.plan_results[1].installments) == 0
+
+
+@pytest.mark.parametrize('count', [1, 2, 3, 4])
+def test_accepts_each_supported_total_with_all_installments_paid(setup, count):
+    client, base, draft, _ = setup
+    response = client.post(base + '/plans', json={**draft, 'installment_count': count, 'paid_installment_count': count})
+    assert response.status_code == 201, response.text
+    assert response.json()['installment_count'] == count
+    assert response.json()['paid_installment_count'] == count
+
+
+@pytest.mark.parametrize('changes,field', [
+    ({'installment_count': '5'}, 'installment_count'),
+    ({'installment_count': '3', 'paid_installment_count': '4'}, 'paid_installment_count'),
+])
+def test_invalid_installment_edit_preserves_the_saved_plan(setup, changes, field):
+    client, base, draft, _ = setup
+    saved = client.post(base + '/plans', json=draft).json()
+    response = client.patch(base + '/plans/' + saved['id'], json={**draft, **changes})
+    assert response.status_code == 422
+    assert any(issue['path'] == f'bnpl_plans[0].{field}' for issue in response.json()['issues'])
+    assert client.get(base + '/plans').json() == [saved]
+
+
+@pytest.mark.parametrize('changes,field', [
+    ({'installment_count': 5}, 'installment_count'),
+    ({'installment_count': 3, 'paid_installment_count': 4}, 'paid_installment_count'),
+])
+def test_profile_import_cannot_bypass_installment_limits(setup, tmp_path, changes, field):
+    client, base, draft, _ = setup
+    assert client.post(base + '/plans', json=draft).status_code == 201
+    document = client.get(base + '/export').json()
+    document['bnpl_plans'][0].update(changes)
+    other = TestClient(create_app(tmp_path / 'invalid-import.sqlite3'))
+    response = other.post('/api/profiles/import', json=document)
+    assert response.status_code == 422
+    assert any(issue['path'] == f'bnpl_plans[0].{field}' for issue in response.json()['issues'])
+    assert other.get('/api/profiles').json() == []
 
 
 @pytest.mark.parametrize('balance', ['0.00', '100.00'])

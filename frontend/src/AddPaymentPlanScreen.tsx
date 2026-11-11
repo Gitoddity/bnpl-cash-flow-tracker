@@ -13,9 +13,22 @@ const fields: { key: keyof PlanDraft; label: string; help: string; type?: string
   { key: 'currency', label: 'Currency', help: 'CAD and USD totals are shown separately. No currency conversion.' },
   { key: 'purchase_date', label: 'Purchase Date', type: 'date', help: 'The date the purchase was made.' },
   { key: 'first_installment_date', label: 'First Installment Date', type: 'date', help: 'The date the first installment was or will be charged.' },
-  { key: 'installment_count', label: 'Total Installments', help: 'The total number of payments in the plan.' },
+  { key: 'installment_count', label: 'Total Installments', help: 'Choose 1 to 4 installments. DueMap supports a maximum of 4 installments per plan.' },
   { key: 'paid_installment_count', label: 'Paid Installments', help: 'Include installments already paid so DueMap projects only what remains.' },
 ]
+
+function installmentErrors(draft: PlanDraft): Partial<Record<keyof PlanDraft, string>> {
+  const errors: Partial<Record<keyof PlanDraft, string>> = {}
+  const total = Number(draft.installment_count)
+  const paid = Number(draft.paid_installment_count)
+  if (!/^[1-4]$/.test(draft.installment_count)) errors.installment_count = 'Choose between 1 and 4 installments.'
+  if (!/^\d+$/.test(draft.paid_installment_count) || !Number.isSafeInteger(paid)) {
+    errors.paid_installment_count = 'Enter a whole number of paid installments, starting from 0.'
+  } else if (!errors.installment_count && paid > total) {
+    errors.paid_installment_count = `Paid installments cannot exceed total installments (${total}).`
+  }
+  return errors
+}
 
 export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, onSaved, onBusyChange, initialValues, submitAction, submitLabel = 'Save Payment Plan', title = 'Add a Payment Plan' }: {
   profileId: string; cards: Card[]; onCancel: () => void; onAddCard: () => void; onSaved: (plan: PaymentPlan) => void
@@ -28,14 +41,21 @@ export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, on
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const pending = useRef(false)
+  const focusErrors = useRef(false)
   const form = useRef<HTMLFormElement>(null)
   const activeCards = cards.filter(card => card.profile_id === profileId)
   useEffect(() => {
-    if (!saving) form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-form-error]')?.focus()
+    if (!saving && focusErrors.current) {
+      form.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-form-error]')?.focus()
+      focusErrors.current = false
+    }
   }, [errors, error, saving])
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (pending.current) return
+    focusErrors.current = true
+    const invalid = installmentErrors(draft)
+    if (Object.keys(invalid).length) { setErrors(invalid); setError(''); return }
     pending.current = true; setSaving(true); onBusyChange(true); setErrors({}); setError('')
     try { onSaved(await (submitAction ? submitAction(draft) : plansApi.create(profileId, draft))) }
     catch (cause) {
@@ -51,15 +71,34 @@ export function AddPaymentPlanScreen({ profileId, cards, onCancel, onAddCard, on
       setErrors(mapped); setError(remaining.join(' '))
     } finally { pending.current = false; setSaving(false); onBusyChange(false) }
   }
+  function changeField(key: keyof PlanDraft, value: string) {
+    const updated = { ...draft, [key]: value }
+    setDraft(updated)
+    setErrors(current => {
+      const next = { ...current }
+      delete next[key]
+      if (key === 'installment_count' || key === 'paid_installment_count') {
+        delete next.installment_count
+        delete next.paid_installment_count
+        const counts = installmentErrors(updated)
+        if (!updated.installment_count) delete counts.installment_count
+        Object.assign(next, counts)
+      }
+      return next
+    })
+    setError('')
+  }
   function field(key: keyof PlanDraft) {
     const item = fields.find(item => item.key === key)!
     const props = { id: `plan-${key}`, name: key, value: draft[key], disabled: saving, required: true,
       'aria-invalid': !!errors[key], 'aria-describedby': `plan-${key}-help${errors[key] ? ` plan-${key}-error` : ''}`,
-      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setDraft(current => ({ ...current, [key]: event.target.value })) }
+      onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => changeField(key, event.target.value) }
     return <div className="card-field" key={key}><label htmlFor={props.id}>{item.label}<span aria-hidden="true"> *</span></label>
       {key === 'provider_name' ? <ProviderSelect id={props.id} value={draft.provider_name} disabled={saving} invalid={!!errors[key]} describedBy={props['aria-describedby']} onChange={provider => setDraft(current => ({ ...current, provider_name: provider }))} />
       : key === 'credit_card_id' ? <select {...props}><option value="" disabled>Select a credit card</option>{activeCards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}</select>
       : key === 'currency' ? <select {...props}><option>CAD</option><option>USD</option></select>
+      : key === 'installment_count' ? <select {...props}><option value="" disabled>Choose total installments</option>{[1, 2, 3, 4].map(count => <option key={count} value={count}>{count}</option>)}</select>
+      : key === 'paid_installment_count' ? <input {...props} type="number" min="0" max={draft.installment_count || 4} step="1" inputMode="numeric" autoComplete="off" />
       : <input {...props} type={item.type || 'text'} inputMode={key === 'purchase_amount' ? 'decimal' : key.endsWith('_count') ? 'numeric' : undefined} placeholder={item.placeholder} autoComplete="off" />}
       <p className="field-help" id={`plan-${key}-help`}>{item.help}</p>
       {errors[key] && <p className="error" id={`plan-${key}-error`}>{errors[key]}</p>}

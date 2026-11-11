@@ -6,6 +6,8 @@ from decimal import Decimal
 
 from bnpl_cashflow.domain.frequency import InstallmentFrequency
 
+MAX_INSTALLMENTS = 4
+
 
 def _require_non_empty_text(value: str, field_name: str) -> str:
     if not isinstance(value, str) or not value.strip():
@@ -126,6 +128,8 @@ class BNPLPlan:
         object.__setattr__(self, "purchase_date", _require_date(self.purchase_date, "purchase_date"))
         object.__setattr__(self, "first_installment_date", _require_date(self.first_installment_date, "first_installment_date"))
         object.__setattr__(self, "installment_count", _require_positive_int(self.installment_count, "installment_count"))
+        if self.installment_count > MAX_INSTALLMENTS:
+            raise ValueError(f"installment_count must not exceed {MAX_INSTALLMENTS}")
         object.__setattr__(self, "installment_frequency", _require_frequency(self.installment_frequency, "installment_frequency"))
         object.__setattr__(self, "credit_card_id", _require_non_empty_text(self.credit_card_id, "credit_card_id"))
         object.__setattr__(

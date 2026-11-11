@@ -123,7 +123,7 @@ If omitted, the application should use sensible defaults and render the standard
 - `currency`: string, required, supported values are `CAD` and `USD`.
 - `purchase_date`: string, required, `YYYY-MM-DD`.
 - `first_installment_date`: string, required, `YYYY-MM-DD`.
-- `installment_count`: integer, required, greater than zero.
+- `installment_count`: integer, required, from 1 through 4.
 - `paid_installment_count`: integer, optional, defaults to `0`; must be between `0` and `installment_count`.
 - `amount_paid`: decimal string, optional, defaults to `"0.00"`; records the provider's exact completed-payment total.
 - `installment_frequency`: string, required.
@@ -253,7 +253,8 @@ The input layer must reject payloads that violate the contract.
 - Invalid date formats.
 - Non-decimal purchase amounts.
 - Negative or zero amounts.
-- `installment_count` must be greater than zero.
+- `installment_count` must be between 1 and 4, inclusive. Profile imports with
+  more than 4 installments are rejected without saving any changes.
 - Missing required fields.
 - Unsupported or malformed installment frequencies.
 - Invalid day-of-month values.

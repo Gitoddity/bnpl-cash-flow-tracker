@@ -55,6 +55,17 @@ def test_bnpl_plan_creation():
     assert plan.installment_frequency is InstallmentFrequency.BIWEEKLY
 
 
+def test_bnpl_plan_rejects_more_than_four_installments():
+    with pytest.raises(ValueError, match='installment_count must not exceed 4'):
+        BNPLPlan(
+            id='plan', provider_name='Klarna', plan_name='Laptop',
+            purchase_amount=Decimal('120.00'), currency='CAD',
+            purchase_date=date(2026, 6, 7), first_installment_date=date(2026, 6, 7),
+            installment_count=5, installment_frequency=InstallmentFrequency.BIWEEKLY,
+            credit_card_id='card',
+        )
+
+
 def test_installment_creation():
     installment = Installment(
         plan_id="plan_klarna_laptop_sleeve",

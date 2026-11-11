@@ -6,6 +6,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from bnpl_cashflow.domain.models import MAX_INSTALLMENTS
+
 
 SUPPORTED_CURRENCIES = {"CAD", "USD"}
 SUPPORTED_PROVIDERS = {"paypal", "klarna", "afterpay", "sezzle", "affirm"}
@@ -263,6 +265,14 @@ def _validate_bnpl_plans(value: Any, issues: list[ValidationIssue], *, allow_emp
             or paid_installment_count is None
             or amount_paid is None
         ):
+            continue
+
+        if installment_count > MAX_INSTALLMENTS:
+            issues.append(ValidationIssue(
+                path=f"{path}.installment_count",
+                message=f"must not exceed {MAX_INSTALLMENTS} installments",
+                value=installment_count,
+            ))
             continue
 
         if paid_installment_count > installment_count:
