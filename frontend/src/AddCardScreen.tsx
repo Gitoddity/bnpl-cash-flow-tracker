@@ -68,7 +68,7 @@ export function AddCardScreen({ profileId, existingCard, onSaved, onCancel, onBu
         {key === 'currency' ? <select id="card-currency" name="currency" value={draft.currency || ''} disabled={saving}
           aria-required="true" aria-invalid={!!errors.currency} aria-describedby={`card-currency-help${errors.currency ? ' card-currency-error' : ''}`}
           onChange={event => changeField('currency', event.target.value)}>
-          <option value="" disabled>Choose currency</option><option value="CAD">CAD — Canadian dollar</option><option value="USD">USD — US dollar</option>
+          <option value="" disabled>Choose currency</option><option value="CAD">CAD</option><option value="USD">USD</option>
         </select> : <input id={`card-${key}`} name={key} type={key.startsWith('upcoming_') ? 'date' : 'text'} inputMode={item.mode} autoComplete="off"
           aria-required={key === 'name' || undefined} placeholder={item.placeholder} value={draft[key]} disabled={saving}
           aria-invalid={!!errors[key]} aria-describedby={`card-${key}-help${errors[key] ? ` card-${key}-error` : ''}`}
